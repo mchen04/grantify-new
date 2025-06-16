@@ -1,0 +1,31 @@
+User-agent: *
+Allow: /
+
+# High-priority pages for crawling
+Allow: /search
+Allow: /ai-grant-discovery
+Allow: /smart-grant-matching
+Allow: /grants/
+
+# Disallow user-specific pages
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /preferences
+Disallow: /settings
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /signup
+Disallow: /auth/
+
+# Allow accessibility pages
+Allow: /accessibility
+Allow: /accessibility-statement
+Allow: /keyboard-shortcuts
+Allow: /screen-reader-guide
+
+# Crawl delay
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://grantify.ai/sitemap.xml

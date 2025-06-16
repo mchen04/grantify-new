@@ -1,0 +1,209 @@
+# ========================
+# Dependencies
+# ========================
+node_modules/
+.pnp/
+.pnp.js
+.yarn/install-state.gz
+
+# ========================
+# Environment variables
+# ========================
+.env
+.env.*
+!.env.example
+!.env.*.example
+.env.vault
+
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ========================
+# Build output
+# ========================
+dist/
+build/
+*.tsbuildinfo
+.tsc-multi/
+.turbo/
+
+# ========================
+# Testing
+# ========================
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+jest-results/
+.jest-cache/
+
+# ========================
+# Data files
+# ========================
+data/
+downloads/
+scraped-data/
+*.zip
+*.xml
+*.csv
+*.xlsx
+*.json.gz
+*.tar.gz
+
+# ========================
+# IDE and Editor
+# ========================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-*
+.history/
+
+# ========================
+# OS files
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========================
+# PM2 & Process Management
+# ========================
+.pm2/
+pids/
+*.pid
+*.seed
+*.pid.lock
+ecosystem.config.js.local
+
+# ========================
+# Temporary files
+# ========================
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+*~
+.eslintcache
+.stylelintcache
+tmp/
+temp/
+.temp/
+.tmp/
+
+# ========================
+# Security
+# ========================
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+private/
+ssl/
+certificates/
+
+# ========================
+# Database
+# ========================
+*.sqlite
+*.sqlite3
+*.db
+.supabase/
+migrations/*.lock
+db-backups/
+*.sql.backup
+*.dump
+database-snapshots/
+
+# ========================
+# Package manager files
+# ========================
+.npm/
+.yarn/
+.pnpm-store/
+.pnp.*
+
+# ========================
+# Debugging
+# ========================
+.node_repl_history
+.v8flags*
+core.*
+*.heap
+*.cpuprofile
+*.heapsnapshot
+
+# ========================
+# Puppeteer
+# ========================
+.chromium/
+.local-chromium/
+
+# ========================
+# Monitoring
+# ========================
+.sentryclirc
+newrelic_agent.log
+datadog-config.json
+
+# ========================
+# Docker
+# ========================
+.docker/
+
+# ========================
+# API Testing & Mock Data
+# ========================
+api-responses/
+mock-data/
+test-responses/
+*.mock.json
+
+# ========================
+# Maintenance Scripts
+# ========================
+src/routes/maintenance.ts
+maintenance-*.js
+cleanup-*.js
+fix-*.js
+
+# ========================
+# Performance Profiling
+# ========================
+*.heapprofile
+*.cpuprofile
+profile/
+profiles/
+performance-reports/
+
+# ========================
+# Lock Files (DO NOT IGNORE)
+# ========================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

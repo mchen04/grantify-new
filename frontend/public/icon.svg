@@ -1,0 +1,17 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Grant/Document icon with AI elements -->
+  <rect x="6" y="4" width="20" height="24" rx="2" fill="#3B82F6" stroke="#1E40AF" stroke-width="1"/>
+  
+  <!-- Document lines -->
+  <rect x="9" y="8" width="14" height="1.5" rx="0.75" fill="white" opacity="0.9"/>
+  <rect x="9" y="11" width="10" height="1.5" rx="0.75" fill="white" opacity="0.7"/>
+  <rect x="9" y="14" width="12" height="1.5" rx="0.75" fill="white" opacity="0.7"/>
+  <rect x="9" y="17" width="8" height="1.5" rx="0.75" fill="white" opacity="0.7"/>
+  
+  <!-- AI/Search magnifying glass -->
+  <circle cx="21" cy="21" r="4" fill="#10B981" stroke="white" stroke-width="1.5"/>
+  <path d="m24 24 2 2" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Small grant/money symbol -->
+  <text x="21" y="23" font-family="Arial, sans-serif" font-size="3" font-weight="bold" fill="white" text-anchor="middle">$</text>
+</svg>

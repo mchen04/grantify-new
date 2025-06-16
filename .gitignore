@@ -1,0 +1,246 @@
+# ========================
+# Root Level .gitignore for Grantify.ai
+# ========================
+
+# ========================
+# Dependencies
+# ========================
+node_modules/
+.pnp/
+.pnp.js
+.yarn/install-state.gz
+
+# ========================
+# Environment Variables
+# ========================
+.env
+.env.*
+!.env.example
+!.env.*.example
+.env.vault
+# Specific frontend env files
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development.local
+
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ========================
+# Build Output
+# ========================
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+.tsc-multi/
+.turbo/
+
+# ========================
+# Testing
+# ========================
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+jest-results/
+.jest-cache/
+
+# ========================
+# IDE and Editor
+# ========================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-*
+.history/
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========================
+# Temporary Files
+# ========================
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+*~
+.eslintcache
+.stylelintcache
+tmp/
+temp/
+.temp/
+.tmp/
+
+# ========================
+# Security Files
+# ========================
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+private/
+ssl/
+certificates/
+
+# ========================
+# Docker
+# ========================
+.docker/
+
+# ========================
+# Package Manager Files
+# ========================
+.npm/
+.yarn/
+.pnpm-store/
+.pnp.*
+
+# ========================
+# Debugging
+# ========================
+.node_repl_history
+.v8flags*
+core.*
+*.heap
+*.cpuprofile
+*.heapsnapshot
+
+# ========================
+# Monitoring
+# ========================
+.sentryclirc
+newrelic_agent.log
+datadog-config.json
+
+# ========================
+# Project Specific
+# ========================
+# Deployment guide (keep this tracked)
+# DEPLOYMENT_GUIDE.md is tracked
+
+# Test connection file
+test-connection.js
+
+# Maintenance and debugging scripts
+check-orphaned-interactions.js
+cleanup-*.js
+test-*.js
+debug-*.js
+fix-*.js
+
+# Frontend specific log files
+frontend/frontend.log
+
+# Typo/temporary files
+colnsole.txt
+console.txt
+output.txt
+temp-*.txt
+debug.txt
+
+# Maintenance utilities (temporary development files)
+frontend/src/utils/maintenance.ts
+backend/src/routes/maintenance.ts
+
+# Claude-related documentation and files
+claude.md
+CLAUDE.md
+.claude/
+.claude*
+
+# Roo-related files
+.roo/
+.roo*
+
+# Supabase local development
+supabase/
+.supabase/
+
+# Other AI/IDE assistants
+.cursor/
+.codeium/
+.copilot/
+.tabnine/
+.kite/
+
+# Local development tools
+.devcontainer/
+.vagrant/
+Vagrantfile
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+.postgres/
+.mysql/
+
+# Development/debugging scripts
+scripts/temp/
+scripts/debug/
+
+# Database backups and dumps
+*.sql.backup
+*.dump
+backups/
+db-backups/
+
+# Performance profiling
+*.heapprofile
+*.cpuprofile
+profile/
+profiles/
+
+# Local SSL certificates (if not in ssl/ directory)
+localhost.crt
+localhost.key
+*.local.crt
+*.local.key
+
+# Temporary API response files
+api-responses/
+response-*.json
+
+# Generated documentation
+docs/generated/
+api-docs/generated/
+
+# ========================
+# Production Files (keep tracked)
+# ========================
+# !vercel.json
+# !docker-compose.yml
+# !nginx.conf
+# !Dockerfile.*

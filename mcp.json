@@ -1,0 +1,54 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ],
+      "disabled": false,
+      "autoApprove": [],
+      "alwaysAllow": [
+        "get-library-docs"
+      ]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_54a90772d670153a8a1edd1b6811807c32d7dfea"
+      ],
+      "disabled": false,
+      "autoApprove": [],
+      "alwaysAllow": []
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "disabled": false,
+      "autoApprove": [],
+      "alwaysAllow": []
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-playwright"],
+      "disabled": false,
+      "autoApprove": [],
+      "alwaysAllow": []
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search",
+        "--api-key",
+        "BSAH947qEnRdJVgv1HISF6kQZr7_PGA"
+      ],
+      "disabled": false,
+      "autoApprove": [],
+      "alwaysAllow": []
+    }
+  }
+}

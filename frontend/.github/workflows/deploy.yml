@@ -1,0 +1,297 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  pre-deployment-tests:
+    name: Pre-Deployment Tests
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Security audit
+        run: npm audit --audit-level=moderate
+        
+      - name: Check for vulnerable dependencies
+        run: |
+          # Check for high/critical vulnerabilities
+          if npm audit --audit-level=high --json | jq -e '.vulnerabilities | length > 0'; then
+            echo "High or critical vulnerabilities found!"
+            npm audit --audit-level=high
+            exit 1
+          fi
+
+  build-production:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-tests, security-check]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build for production
+        run: npm run build
+        env:
+          NODE_ENV: production
+          
+      - name: Bundle analysis
+        run: npm run build:analyze
+        env:
+          NODE_ENV: production
+          
+      - name: Check bundle size
+        run: |
+          # Check if bundle size is reasonable
+          total_size=$(du -sb .next/static | cut -f1)
+          max_size=$((5 * 1024 * 1024)) # 5MB limit
+          
+          if [ $total_size -gt $max_size ]; then
+            echo "Bundle size too large: $(($total_size / 1024 / 1024))MB (max: 5MB)"
+            exit 1
+          fi
+          
+          echo "Bundle size OK: $(($total_size / 1024 / 1024))MB"
+          
+      - name: Upload production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build
+          path: .next/
+          retention-days: 30
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: build-production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        
+      - name: Download production build
+        uses: actions/download-artifact@v4
+        with:
+          name: production-build
+          path: .next/
+          
+      - name: Start production server
+        run: npm start &
+        env:
+          NODE_ENV: production
+          PORT: 3000
+          
+      - name: Wait for server
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000/api/health; do sleep 2; done'
+          
+      - name: Run smoke tests
+        run: |
+          npx playwright test --grep "should display homepage" --project=chromium
+          
+      - name: Health check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health)
+          if [ $response -ne 200 ]; then
+            echo "Health check failed with status: $response"
+            exit 1
+          fi
+
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [smoke-tests]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build project artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy to preview
+        id: deploy-preview
+        run: |
+          preview_url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "preview_url=$preview_url" >> $GITHUB_OUTPUT
+          
+      - name: Run E2E tests against preview
+        run: |
+          npx playwright test --project=chromium
+        env:
+          E2E_BASE_URL: ${{ steps.deploy-preview.outputs.preview_url }}
+          
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Preview deployed: ${{ steps.deploy-preview.outputs.preview_url }}`
+            })
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [smoke-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build project artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy to production
+        id: deploy-production
+        run: |
+          production_url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "production_url=$production_url" >> $GITHUB_OUTPUT
+
+  post-deployment-tests:
+    name: Post-Deployment Tests
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        
+      - name: Run production smoke tests
+        run: |
+          npx playwright test --grep "smoke" --project=chromium
+        env:
+          E2E_BASE_URL: ${{ needs.deploy-production.outputs.production_url }}
+          
+      - name: Run production health checks
+        run: |
+          # Test critical endpoints
+          curl -f ${{ needs.deploy-production.outputs.production_url }}/api/health
+          curl -f ${{ needs.deploy-production.outputs.production_url }}/
+          
+      - name: Performance check
+        run: |
+          npx playwright test e2e/performance.spec.ts --project=chromium
+        env:
+          E2E_BASE_URL: ${{ needs.deploy-production.outputs.production_url }}
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-production, post-deployment-tests]
+    if: failure() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Rollback deployment
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          # Implement rollback logic here
+          # This could involve reverting to previous deployment
+          
+      - name: Notify team
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Production Deployment Failed - ${context.sha.substring(0,7)}`,
+              body: `
+                Production deployment failed for commit ${context.sha}.
+                
+                **Failure Details:**
+                - Workflow: ${context.workflow}
+                - Run: ${context.runNumber}
+                - Actor: ${context.actor}
+                
+                Please investigate and fix the issues before the next deployment.
+              `,
+              labels: ['bug', 'deployment', 'critical']
+            })
+
+  notify-success:
+    name: Notify Success
+    runs-on: ubuntu-latest
+    needs: [deploy-production, post-deployment-tests]
+    if: success() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Notify successful deployment
+        run: |
+          echo "🎉 Production deployment successful!"
+          echo "URL: ${{ needs.deploy-production.outputs.production_url }}"

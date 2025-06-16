@@ -1,0 +1,56 @@
+# Robots.txt for Grantify.ai
+
+User-agent: *
+Allow: /
+
+# AI Search Crawlers
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Bard
+Allow: /
+
+# High-value pages for crawling
+Allow: /search
+Allow: /about
+Allow: /grants/*
+Allow: /dashboard
+Allow: /profile
+Allow: /preferences
+Allow: /settings
+
+# Block admin or sensitive areas
+Disallow: /api/
+Disallow: /auth/
+Disallow: /_next/
+Disallow: /admin
+Disallow: /private
+
+# Allow common assets
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+Allow: /*.webp
+
+# Sitemap location
+Sitemap: https://grantify.ai/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
