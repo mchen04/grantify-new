@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to Grantify.ai! This document provides guidelines for contributing to the project.
 
-## 🚀 Getting Started
+## Getting Started
 
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/your-username/Grantify.ai.git`
@@ -12,11 +12,11 @@ Thank you for your interest in contributing to Grantify.ai! This document provid
 6. Push to the branch: `git push origin feature/your-feature-name`
 7. Create a Pull Request
 
-## 💻 Development Setup
+## Development Setup
 
 Follow the instructions in the main [README.md](./README.md) to set up your development environment.
 
-## 📝 Code Style
+## Code Style
 
 ### TypeScript
 - Use TypeScript strict mode
@@ -36,7 +36,7 @@ Follow the instructions in the main [README.md](./README.md) to set up your deve
 - Add input validation for all endpoints
 - Write clear, concise comments for complex logic
 
-## 🧪 Testing
+## Testing
 
 - Write tests for new features
 - Ensure all tests pass before submitting PR

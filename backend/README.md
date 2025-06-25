@@ -2,7 +2,7 @@
 
 Express.js API server for the Grantify.ai grant discovery platform.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js 4.18.2 with TypeScript
@@ -12,7 +12,7 @@ Express.js API server for the Grantify.ai grant discovery platform.
 - **Security**: JWT auth, RBAC, CSRF protection, rate limiting
 - **Monitoring**: Sentry error tracking, Winston logging
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 backend/
@@ -29,7 +29,7 @@ backend/
 └── dist/             # Compiled TypeScript
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
@@ -76,7 +76,7 @@ npm run dev
 
 Server runs on `http://localhost:3001`
 
-## 📚 API Documentation
+## API Documentation
 
 ### Authentication
 Protected endpoints require:
@@ -112,7 +112,7 @@ Authorization: Bearer <supabase-jwt-token>
 - Auth endpoints: 5 requests/15 min
 - Recommendation API: 50 requests/15 min
 
-## 🔧 Key Features
+## Key Features
 
 ### Smart Recommendations
 Weighted scoring algorithm:
@@ -137,7 +137,7 @@ Weighted scoring algorithm:
 - Audit logging
 - RBAC implementation
 
-## 🧪 Testing
+## Testing
 
 ```bash
 npm run build          # Compile TypeScript
@@ -146,7 +146,7 @@ npm run dev            # Development with nodemon
 npm run logs           # View application logs
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker
 ```bash
@@ -161,7 +161,7 @@ docker run -p 3001:3001 grantify-backend
 4. Set up SSL/TLS termination
 5. Configure rate limits appropriately
 
-## 📊 Data Sources
+## Data Sources
 
 Automated sync with 13+ grant APIs:
 - NIH Reporter
@@ -171,7 +171,7 @@ Automated sync with 13+ grant APIs:
 - USASPENDING
 - And more...
 
-## 🛡️ Maintenance
+## Maintenance
 
 ### Database
 ```bash
@@ -187,6 +187,6 @@ curl http://localhost:3001/api/maintenance/orphaned-interactions-stats
 - Sentry dashboard for errors
 - Winston logs in `logs/` directory
 
-## 📄 License
+## License
 
 Part of the Grantify.ai project - MIT License

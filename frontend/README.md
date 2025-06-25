@@ -2,19 +2,19 @@
 
 Next.js-based frontend application for the Grantify.ai grant discovery platform.
 
-## 🎨 Features
+## Features
 
-- **🔍 Smart Search**: Full-text grant discovery across 13+ API data sources
-- **📊 Advanced Filtering**: 20+ filter criteria with real-time updates
-- **🤖 Smart Recommendations**: Algorithm based on user preferences and interaction history
-- **📱 Responsive Design**: Mobile-first with full touch support
-- **♿ Accessibility**: WCAG 2.1 AA compliant with screen reader optimization
-- **⚡ Performance**: Batch API calls, request deduplication, and intelligent caching
-- **🎯 Smart Tracking**: Save, apply, and ignore grants with instant UI updates
-- **📦 PWA Support**: Progressive Web App with offline capabilities
-- **🛡️ Error Monitoring**: Integrated Sentry for production debugging
+- **Smart Search**: Full-text grant discovery across 13+ API data sources
+- **Advanced Filtering**: 20+ filter criteria with real-time updates
+- **Smart Recommendations**: Algorithm based on user preferences and interaction history
+- **Responsive Design**: Mobile-first with full touch support
+- **Accessibility**: WCAG 2.1 AA compliant with screen reader optimization
+- **Performance**: Batch API calls, request deduplication, and intelligent caching
+- **Smart Tracking**: Save, apply, and ignore grants with instant UI updates
+- **PWA Support**: Progressive Web App with offline capabilities
+- **Error Monitoring**: Integrated Sentry for production debugging
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: Next.js 15.3.4 with App Router
 - **Language**: TypeScript 5 (strict mode)
@@ -27,7 +27,7 @@ Next.js-based frontend application for the Grantify.ai grant discovery platform.
 - **Monitoring**: Sentry integration with session replay
 - **Testing**: Jest + React Testing Library + Playwright
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
@@ -69,7 +69,7 @@ npm run dev
 
 5. Open http://localhost:3000 in your browser
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 frontend/
@@ -117,7 +117,7 @@ frontend/
 └── tailwind.config.ts        # Tailwind configuration
 ```
 
-## 🎯 Key Features Implementation
+## Key Features Implementation
 
 ### Dashboard with Batch Loading
 The dashboard efficiently loads grant data using batch endpoints:
@@ -177,7 +177,7 @@ Comprehensive filter options:
 - **Alt Text**: Meaningful descriptions for all images
 - **Semantic HTML**: Proper heading hierarchy and landmarks
 
-## 🧩 Key Components & Hooks
+## Key Components & Hooks
 
 ### Custom Hooks
 - **useFetchDashboardData**: Manages dashboard data with batch loading
@@ -190,7 +190,7 @@ Comprehensive filter options:
 - **Filter Components**: CompactAdvancedFilterPanel, ActiveFilters, FundingRangeFilter, DeadlineFilter
 - **UI Components**: Button, Badge, Container, SkipLink, ErrorBoundary
 
-## ⚡ Performance Optimizations
+## Performance Optimizations
 
 ### Implemented Optimizations
 1. **Batch API Calls**: Reduced requests by 90%+
@@ -211,7 +211,7 @@ experimental: {
 }
 ```
 
-## 🔐 Security
+## Security
 
 - **Authentication**: Google OAuth via Supabase
 - **Session Management**: Automatic token refresh
@@ -219,7 +219,7 @@ experimental: {
 - **Security Headers**: X-Frame-Options, CSP, HSTS, etc.
 - **Input Sanitization**: DOMPurify for HTML content
 
-## 🧪 Testing
+## Testing
 
 ```bash
 npm test                 # Run unit tests
@@ -231,7 +231,7 @@ npm run test:perf       # Performance tests
 npm run test:a11y       # Accessibility tests
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker Deployment
 ```bash
@@ -247,20 +247,20 @@ vercel deploy --prod
 
 See the main [README.md](../README.md) for detailed deployment instructions.
 
-## 📱 Progressive Web App
+## Progressive Web App
 
 - **Offline Support**: Service worker caching
 - **Install Prompt**: Add to home screen
 - **App Manifest**: Native app experience
 - **Push Notifications**: Grant deadline reminders (planned)
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 - **Hydration Errors**: Check for browser-only APIs in SSR
 - **Auth Issues**: Verify Supabase URL and keys
 - **Build Errors**: Clear `.next` directory and check environment variables
 - **Performance**: Run `npm run build:analyze` to check bundle size
 
-## 📄 License
+## License
 
 Part of the Grantify.ai project - MIT License

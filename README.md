@@ -2,23 +2,23 @@
 
 A grant discovery platform that helps researchers and organizations find relevant funding opportunities using advanced search and intelligent recommendations.
 
-## 🚀 Overview
+## Overview
 
 Grantify.ai transforms how researchers discover and apply for grants by combining automated data collection from official sources, advanced search capabilities, and personalized recommendations to make grant discovery efficient and effective.
 
 ### Key Features
 
-- **🔍 Advanced Search**: Full-text search across grant titles and descriptions
-- **🤖 Smart Recommendations**: Algorithm that matches grants based on user preferences and interaction history
-- **📊 Advanced Filtering**: Filter by 20+ criteria including funding amount, deadlines, eligibility, and agencies
-- **🔄 Real-time Updates**: Direct API integration with 13+ official grant data sources
-- **📱 Responsive Design**: Full mobile support with comprehensive accessibility features
-- **🔐 Enterprise Security**: Supabase Auth with Google OAuth, RBAC, CSRF protection, rate limiting, and audit logging
-- **⚡ Performance Optimized**: Batch API endpoints, database indexing, hybrid caching (Redis + in-memory)
-- **📈 Analytics Dashboard**: Real-time metrics with materialized views for performance insights
-- **🛡️ Error Monitoring**: Integrated Sentry for error tracking and performance monitoring
+- **Advanced Search**: Full-text search across grant titles and descriptions
+- **Smart Recommendations**: Algorithm that matches grants based on user preferences and interaction history
+- **Advanced Filtering**: Filter by 20+ criteria including funding amount, deadlines, eligibility, and agencies
+- **Real-time Updates**: Direct API integration with 13+ official grant data sources
+- **Responsive Design**: Full mobile support with comprehensive accessibility features
+- **Enterprise Security**: Supabase Auth with Google OAuth, RBAC, CSRF protection, rate limiting, and audit logging
+- **Performance Optimized**: Batch API endpoints, database indexing, hybrid caching (Redis + in-memory)
+- **Analytics Dashboard**: Real-time metrics with materialized views for performance insights
+- **Error Monitoring**: Integrated Sentry for error tracking and performance monitoring
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Framework**: Next.js 15.3.4 with App Router
@@ -41,7 +41,7 @@ Grantify.ai transforms how researchers discover and apply for grants by combinin
 - **Logging**: Winston with JSON formatting
 - **Monitoring**: Sentry for error tracking and performance monitoring
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Grantify.ai/
@@ -67,7 +67,7 @@ Grantify.ai/
 └── scripts/              # Deployment and maintenance scripts
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -152,7 +152,7 @@ cd frontend && npm run dev    # http://localhost:3000
 cd backend && npm run dev     # http://localhost:3001
 ```
 
-## 🗄️ Database Schema
+## Database Schema
 
 See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed schema documentation.
 
@@ -163,7 +163,7 @@ See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed schema documentation
 - **user_interactions**: Tracks saved, applied, and ignored grants
 - **data_sources**: API data source configuration and management
 
-## 🔧 Key Features
+## Key Features
 
 ### Smart Recommendations Algorithm
 - Funding range matching (30% weight)
@@ -190,7 +190,7 @@ See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed schema documentation
 - Security headers (HSTS, CSP, X-Frame-Options)
 - Audit logging for security events
 
-## 📚 API Documentation
+## API Documentation
 
 ### Authentication
 All protected endpoints require Bearer token:
@@ -215,7 +215,7 @@ Authorization: Bearer <supabase-jwt-token>
 - `GET /api/users/preferences` - Get preferences
 - `PUT /api/users/preferences` - Update preferences
 
-## 🚀 Deployment
+## Deployment
 
 See the comprehensive [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for production deployment instructions.
 
@@ -234,7 +234,7 @@ See the comprehensive [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for productio
 4. Start: `npm start`
 5. Add environment variables
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Frontend tests
@@ -248,14 +248,14 @@ cd backend
 # Tests not yet implemented
 ```
 
-## 📊 Monitoring
+## Monitoring
 
 - **Error Tracking**: Sentry integration for both frontend and backend
 - **Performance Monitoring**: Real-time metrics and profiling
 - **Health Checks**: `GET /api/health` endpoint
 - **Analytics Dashboard**: User engagement and grant metrics
 
-## 🛡️ Security Best Practices
+## Security Best Practices
 
 1. **Environment Variables**: Never commit .env files
 2. **API Keys**: Rotate regularly, use least privilege
@@ -263,7 +263,7 @@ cd backend
 4. **HTTPS**: Always use in production
 5. **Dependencies**: Regular updates with `npm audit`
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -271,11 +271,11 @@ cd backend
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - NIH for providing public grant data
 - Google Cloud for AI/ML services
@@ -284,8 +284,8 @@ This project is licensed under the MIT License.
 
 ---
 
-Built with ❤️ by the Grantify.ai team
+Built by the Grantify.ai team
 
-**Status**: Production Ready ✅
+**Status**: Production Ready
 **Version**: 1.2.0
 **Last Updated**: January 2025
