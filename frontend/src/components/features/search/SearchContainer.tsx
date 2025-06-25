@@ -14,14 +14,15 @@ interface SearchContainerProps {
   totalCount: number;
   query: string;
   onPageChange: (page: number) => void;
-  onGrantSave: (grantId: string, status: InteractionStatus | null) => void;
-  onGrantApply: (grantId: string, status: InteractionStatus | 'pending' | null) => void;
-  onGrantIgnore: (grantId: string, status: InteractionStatus | null) => void;
-  onGrantShare: (grantId: string) => void;
+  onGrantSave: (grantId: string, status: InteractionStatus | null) => Promise<void>;
+  onGrantApply: (grantId: string, status: InteractionStatus | 'pending' | null) => Promise<void>;
+  onGrantIgnore: (grantId: string, status: InteractionStatus | null) => Promise<void>;
+  onGrantShare: (grantId: string) => Promise<void>;
   showApplyConfirmation: boolean;
   pendingApplyGrant: Grant | null;
   onConfirmApply: () => void;
   onCancelApply: () => void;
+  getInteractionStatus: (grantId: string) => InteractionStatus | undefined;
 }
 
 const SearchContainer: React.FC<SearchContainerProps> = ({
@@ -40,23 +41,24 @@ const SearchContainer: React.FC<SearchContainerProps> = ({
   showApplyConfirmation,
   pendingApplyGrant,
   onConfirmApply,
-  onCancelApply
+  onCancelApply,
+  getInteractionStatus
 }) => {
   // Wrapper functions to match Promise expectations
   const handleSave = async (grantId: string, status: InteractionStatus | null) => {
-    onGrantSave(grantId, status);
+    await onGrantSave(grantId, status);
   };
 
   const handleApply = async (grantId: string, status: InteractionStatus | 'pending' | null) => {
-    onGrantApply(grantId, status);
+    await onGrantApply(grantId, status);
   };
 
   const handleIgnore = async (grantId: string, status: InteractionStatus | null) => {
-    onGrantIgnore(grantId, status);
+    await onGrantIgnore(grantId, status);
   };
 
   const handleShare = async (grantId: string) => {
-    onGrantShare(grantId);
+    await onGrantShare(grantId);
   };
 
   // Memoize search parameters for performance
@@ -89,6 +91,7 @@ const SearchContainer: React.FC<SearchContainerProps> = ({
         onApply={handleApply}
         onIgnore={handleIgnore}
         onShare={handleShare}
+        getInteractionStatus={getInteractionStatus}
       />
       
       {/* Apply Confirmation Popup - Lazy loaded via dynamic import in parent */}

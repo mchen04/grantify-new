@@ -66,18 +66,16 @@ export const DEFAULT_FILTER_STATE: Partial<GrantFilter> = {
   showOverdue: false, // Don't show overdue grants by default
   sortBy: 'relevance',
   page: 1,
-  agencies: [],
-  agency_subdivisions: [],
+  organizations: [],
+  organization_subdivisions: [],
   grant_types: [],
   activity_categories: [],
-  announcement_types: [],
   eligible_applicant_types: [],
   keywords: [],
-  costSharing: null,
-  clinicalTrialAllowed: null,
-  status: undefined, // Explicitly set to undefined - no default status filter
-  statuses: [], // No default status filters
-  data_sources: ['NIH'] // Include NIH by default since it's the primary data source
+  costSharingRequired: null,
+  // Show all grants by default (empty array means no status filter applied)
+  statuses: [], // Empty array shows all grants
+  data_source_ids: [] // Data source IDs
 };
 
 // Helper function to apply preset and handle conflicts

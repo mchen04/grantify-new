@@ -11,7 +11,7 @@ export async function GET() {
     // Get grant statistics
     const { data: grantStats, error: grantError } = await supabase
       .from('grants')
-      .select('status, agency_name, award_ceiling, data_source, close_date')
+      .select('status, funding_organization_name, funding_amount_max, data_source, application_deadline')
       .in('status', ['active', 'Active', 'upcoming', 'Upcoming']);
     
     if (grantError) throw grantError;
@@ -19,8 +19,8 @@ export async function GET() {
     // Calculate stats
     const totalGrants = grantStats?.length || 0;
     const activeGrants = grantStats?.filter(g => g.status.toLowerCase() === 'active').length || 0;
-    const uniqueAgencies = new Set(grantStats?.map(g => g.agency_name).filter(Boolean)).size;
-    const totalFunding = grantStats?.reduce((sum, g) => sum + (g.award_ceiling || 0), 0) || 0;
+    const uniqueAgencies = new Set(grantStats?.map(g => g.funding_organization_name).filter(Boolean)).size;
+    const totalFunding = grantStats?.reduce((sum, g) => sum + (g.funding_amount_max || 0), 0) || 0;
     const dataSources = new Set(grantStats?.map(g => g.data_source).filter(Boolean)).size + 50; // Adding 50 for other sources we plan to integrate
 
     // Calculate grants expiring soon
@@ -30,20 +30,20 @@ export async function GET() {
     const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
     
     const grantsExpiringTwoWeeks = grantStats?.filter(g => {
-      if (!g.close_date) return false;
-      const closeDate = new Date(g.close_date);
+      if (!g.application_deadline) return false;
+      const closeDate = new Date(g.application_deadline);
       return closeDate > now && closeDate <= twoWeeksFromNow;
     }).length || 0;
     
     const grantsExpiringOneWeek = grantStats?.filter(g => {
-      if (!g.close_date) return false;
-      const closeDate = new Date(g.close_date);
+      if (!g.application_deadline) return false;
+      const closeDate = new Date(g.application_deadline);
       return closeDate > now && closeDate <= oneWeekFromNow;
     }).length || 0;
     
     const grantsExpiringThreeDays = grantStats?.filter(g => {
-      if (!g.close_date) return false;
-      const closeDate = new Date(g.close_date);
+      if (!g.application_deadline) return false;
+      const closeDate = new Date(g.application_deadline);
       return closeDate > now && closeDate <= threeDaysFromNow;
     }).length || 0;
 

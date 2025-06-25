@@ -2,40 +2,44 @@ import express, { Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { cacheConfigs } from '../middleware/cache.middleware';
 import logger from '../utils/logger';
-import supabaseClient from '../db/supabaseClient';
+import supabaseClient, { getServiceRoleClient } from '../db/supabaseClient';
 import { validateGrantFilters, validateUUID, validateNumber } from '../utils/inputValidator';
 import { AppError, asyncHandler } from '../utils/ErrorHandler';
-
-// Import both real and mock services
 import grantsService from '../services/grants/grantsService';
+import usersService from '../services/users/usersService';
 
 const router = express.Router();
 
-// Conditional auth middleware - only applies when user_id is provided for filtering
-const conditionalAuthMiddleware = (req: Request, res: Response, next: any) => {
-  // If user_id is provided in query and exclude_interaction_types is used, require auth
-  if (req.query.user_id && req.query.exclude_interaction_types) {
+// Optional auth middleware - sets up user context if token is present, but doesn't require it
+const optionalAuthMiddleware = async (req: Request, res: Response, next: any) => {
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // User is authenticated, set up user context
     return authMiddleware(req, res, next);
   }
-  // Otherwise, continue without authentication
+  
+  // No authentication provided, continue without user context
   next();
 };
 
 // GET /api/grants - Get all grants with filtering
 router.get('/',
   cacheConfigs.short,
-  conditionalAuthMiddleware,
+  optionalAuthMiddleware,
   asyncHandler(async (req: Request, res: Response) => {
     // Validate and parse query parameters
     const validatedFilters = validateGrantFilters(req.query);
     
     logger.debug('Grants search request', {
       filters: validatedFilters,
-      userId: req.user?.id || 'unauthenticated'
+      userId: req.user?.id || 'unauthenticated',
+      hasAuth: !!req.user
     });
 
-    // Use authenticated client if available, otherwise use anonymous client
-    const clientToUse = req.supabase || supabaseClient;
+    // Use service role client for public grants access (bypasses RLS)
+    // This allows both authenticated and unauthenticated users to see grants
+    const clientToUse = getServiceRoleClient();
     
     // Use the grants service to fetch grants with validated filters
     const { grants, totalCount } = await grantsService.getGrants(validatedFilters, clientToUse);
@@ -66,7 +70,6 @@ router.get('/',
 );
 
 // GET /api/grants/recommended - Get recommended grants for a user
-// Note: This route must be defined before the /:id route to avoid conflicts
 router.get('/recommended',
   authMiddleware,
   cacheConfigs.recommendations,
@@ -113,7 +116,7 @@ router.get('/recommended',
         page: 1,
         sort_by: 'created_at',
         sort_direction: 'desc'
-      } as any);
+      });
 
       if (fallbackResult.grants.length > 0) {
         logger.info('Using fallback grants instead of recommendations', {
@@ -139,375 +142,110 @@ router.get('/recommended',
   })
 );
 
-// GET /api/grants/similar - Get similar grants using embeddings
-router.get('/similar',
+// GET /api/grants/search - Search grants using full-text search
+router.get('/search',
+  cacheConfigs.short,
+  optionalAuthMiddleware,
   asyncHandler(async (req: Request, res: Response) => {
-    // Validate query parameters
-    const grantId = req.query.exclude_id as string;
-    if (!grantId) {
-      throw new AppError('exclude_id parameter is required', 400);
+    const searchQuery = req.query.q as string;
+    
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      throw new AppError('Search query is required', 400);
     }
 
-    // Validate UUID format
-    try {
-      validateUUID(grantId, true);
-    } catch (error) {
-      throw new AppError('Invalid grant ID format', 400);
-    }
+    const limit = validateNumber(req.query.limit, { min: 1, max: 50, integer: true }) || 20;
+    const page = validateNumber(req.query.page, { min: 1, integer: true }) || 1;
 
-    const limit = validateNumber(req.query.limit, { min: 1, max: 20, integer: true }) || 3;
-    const matchThreshold = validateNumber(req.query.match_threshold, { min: 0.001, max: 1 }) || 0.7;
-
-    logger.debug('Similar grants request (embeddings-based)', {
-      grantId,
+    logger.debug('Grant search request', {
+      query: searchQuery,
       limit,
-      matchThreshold,
+      page,
       userId: req.user?.id || 'unauthenticated'
     });
 
-    // First, get the embedding for the source grant
-    const { data: sourceGrant, error: sourceError } = await supabaseClient
-      .from('grants')
-      .select('embeddings')
-      .eq('id', grantId)
-      .single();
-
-    if (sourceError || !sourceGrant?.embeddings) {
-      logger.warn('Source grant not found or has no embeddings', { grantId });
-      // Fallback to category-based search if embeddings are not available
-      const fallbackResult = await grantsService.getGrants({
-        exclude_id: grantId,
-        limit: limit
-      });
-
-      return res.json({
-        message: 'Similar grants fetched successfully',
-        grants: fallbackResult.grants,
-        count: fallbackResult.grants.length,
-        totalCount: fallbackResult.totalCount,
-        method: 'category_fallback'
-      });
-    }
-
-    // Use the guaranteed similarity function to ensure we get results
-    const { data: similarGrants, error: similarError } = await supabaseClient
-      .rpc('get_similar_grants_guaranteed', {
-        query_embedding: sourceGrant.embeddings,
-        match_threshold: matchThreshold,
-        match_count: limit + 1 // Get one extra to account for excluding source grant
-      });
-
-    if (similarError) {
-      logger.error('Error calling get_similar_grants RPC:', {
-        error: similarError,
-        grantId,
-        hasEmbeddings: !!sourceGrant?.embeddings
-      });
-      
-      // Fallback to category-based search on RPC error
-      const fallbackResult = await grantsService.getGrants({
-        exclude_id: grantId,
-        limit: limit
-      });
-
-      return res.json({
-        message: 'Similar grants fetched successfully',
-        grants: fallbackResult.grants,
-        count: fallbackResult.grants.length,
-        totalCount: fallbackResult.totalCount,
-        method: 'category_fallback'
-      });
-    }
-
-    // Filter out the source grant and limit results
-    const filteredGrants = (similarGrants || [])
-      .filter((grant: any) => grant.id !== grantId)
-      .slice(0, limit);
-
-    // Transform the results to include contacts and calculate similarity scores
-    const grantsWithContacts = await Promise.all(
-      filteredGrants.map(async (grant: any, index: number) => {
-        const { data: contacts } = await supabaseClient
-          .from('grant_contacts')
-          .select('*')
-          .eq('grant_id', grant.id)
-          .order('display_order');
-
-        // Calculate a similarity score based on position (since grants are ordered by similarity)
-        // The first result gets the highest score, decreasing for subsequent results
-        const similarityScore = Math.max(0.6, 1 - (index * 0.1));
-
-        return {
-          ...grant,
-          contacts: contacts || [],
-          similarity_score: similarityScore
-        };
-      })
+    // Use service role client so unauthenticated users can search grants
+    const { grants, totalCount } = await grantsService.searchGrants(
+      searchQuery,
+      { limit, page },
+      getServiceRoleClient()
     );
 
     res.json({
-      message: 'Similar grants fetched successfully',
-      grants: grantsWithContacts,
-      count: grantsWithContacts.length,
-      totalCount: grantsWithContacts.length,
-      method: 'embeddings',
-      match_threshold: matchThreshold
+      message: 'Search completed successfully',
+      grants,
+      count: grants.length,
+      totalCount,
+      query: searchQuery
     });
-  })
-);
-
-// POST /api/grants/search-by-embedding - Search grants using provided embedding
-router.post('/search-by-embedding',
-  asyncHandler(async (req: Request, res: Response) => {
-    // Validate request body
-    const { embedding, limit = 10, match_threshold = 0.6 } = req.body;
-    
-    if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
-      throw new AppError('Embedding array is required', 400);
-    }
-
-    const validLimit = validateNumber(limit, { min: 1, max: 50, integer: true }) || 10;
-    const validThreshold = validateNumber(match_threshold, { min: 0.1, max: 1 }) || 0.6;
-
-    logger.debug('Search by embedding request', {
-      embeddingLength: embedding.length,
-      limit: validLimit,
-      matchThreshold: validThreshold
-    });
-
-    try {
-      // Use the get_similar_grants RPC function with provided embedding
-      const { data: similarGrants, error: similarError } = await supabaseClient
-        .rpc('get_similar_grants', {
-          query_embedding: embedding,
-          match_threshold: validThreshold,
-          match_count: validLimit
-        });
-
-      if (similarError) {
-        logger.error('Error calling get_similar_grants RPC:', {
-          error: similarError
-        });
-        throw new AppError('Failed to search grants', 500);
-      }
-
-      // Add contacts to each grant
-      const grantsWithContacts = await Promise.all(
-        (similarGrants || []).map(async (grant: any) => {
-          const { data: contacts } = await supabaseClient
-            .from('grant_contacts')
-            .select('*')
-            .eq('grant_id', grant.id)
-            .order('display_order');
-
-          return {
-            ...grant,
-            contacts: contacts || []
-          };
-        })
-      );
-
-      res.json({
-        message: 'Semantic search completed successfully',
-        grants: grantsWithContacts,
-        count: grantsWithContacts.length,
-        method: 'embeddings'
-      });
-    } catch (error) {
-      logger.error('Error in search by embedding:', error);
-      throw new AppError('Failed to search grants by embedding', 500);
-    }
-  })
-);
-
-// GET /api/grants/search-semantic - Search grants using semantic similarity
-router.get('/search-semantic',
-  asyncHandler(async (req: Request, res: Response) => {
-    // Validate query parameters
-    const searchQuery = req.query.query as string;
-    if (!searchQuery || searchQuery.trim().length === 0) {
-      throw new AppError('Query parameter is required', 400);
-    }
-
-    const limit = validateNumber(req.query.limit, { min: 1, max: 50, integer: true }) || 10;
-    const matchThreshold = validateNumber(req.query.match_threshold, { min: 0.001, max: 1 }) || 0.6;
-
-    logger.debug('Semantic search request', {
-      query: searchQuery,
-      limit,
-      matchThreshold,
-      userId: req.user?.id || 'unauthenticated'
-    });
-
-    try {
-      // Import the embedding service
-      const { embeddingService } = await import('../services/ai/embeddingServiceWrapper');
-      
-      // Generate embedding for the search query
-      logger.info('Generating embedding for search query:', { 
-        query: searchQuery,
-        type: typeof searchQuery,
-        isArray: Array.isArray(searchQuery)
-      });
-      
-      // Ensure searchQuery is a string
-      const queryText = Array.isArray(searchQuery) ? searchQuery.join(' ') : String(searchQuery);
-      const queryEmbedding = await embeddingService.generateEmbedding(queryText);
-      
-      if (!queryEmbedding || queryEmbedding.length === 0) {
-        throw new AppError('Failed to generate embedding for search query', 500);
-      }
-
-      logger.info('Generated embedding with dimensions:', queryEmbedding.length);
-
-      // Use the get_similar_grants_guaranteed RPC function to ensure we get results
-      const { data: similarGrants, error: similarError } = await supabaseClient
-        .rpc('get_similar_grants_guaranteed', {
-          query_embedding: queryEmbedding,
-          match_threshold: matchThreshold,
-          match_count: limit
-        });
-
-      if (similarError) {
-        logger.error('Error calling get_similar_grants RPC:', {
-          error: similarError,
-          query: searchQuery
-        });
-        throw new AppError('Failed to search grants', 500);
-      }
-
-      // Add contacts to each grant
-      const grantsWithContacts = await Promise.all(
-        (similarGrants || []).map(async (grant: any) => {
-          const { data: contacts } = await supabaseClient
-            .from('grant_contacts')
-            .select('*')
-            .eq('grant_id', grant.id)
-            .order('display_order');
-
-          return {
-            ...grant,
-            contacts: contacts || []
-          };
-        })
-      );
-
-      res.json({
-        message: 'Semantic search completed successfully',
-        grants: grantsWithContacts,
-        count: grantsWithContacts.length,
-        method: 'embeddings',
-        query: searchQuery
-      });
-    } catch (error) {
-      logger.error('Error in semantic search:', error);
-      
-      // Fallback to regular search if embedding fails
-      const fallbackResult = await grantsService.getGrants({
-        search: searchQuery,
-        limit: limit
-      });
-
-      return res.json({
-        message: 'Search completed successfully (fallback)',
-        grants: fallbackResult.grants,
-        count: fallbackResult.grants.length,
-        totalCount: fallbackResult.totalCount,
-        method: 'keyword_fallback'
-      });
-    }
   })
 );
 
 // GET /api/grants/metadata - Get all filter metadata options
 router.get('/metadata', asyncHandler(async (req: Request, res: Response) => {
   logger.debug('Fetching grant metadata for filters');
+  
+  // Use service role client to bypass RLS for public metadata
+  const serviceClient = getServiceRoleClient();
     
   // Fetch all distinct values for filter options in parallel
   const [
-    agenciesResult,
-    subdivisionsResult,
+    organizationsResult,
     grantTypesResult,
-    activityCodesResult,
-    activityCategoriesResult,
-    announcementTypesResult,
-    applicantTypesResult,
-    dataSourcesResult,
-    statusesResult
+    fundingInstrumentsResult,
+    geographicScopesResult,
+    statusesResult,
+    dataSourcesResult
   ] = await Promise.all([
-    // Agencies
-    supabaseClient
+    // Organizations
+    serviceClient
       .from('grants')
-      .select('agency_name')
-      .not('agency_name', 'is', null)
-      .order('agency_name', { ascending: true }),
-    
-    // Subdivisions
-    supabaseClient
-      .from('grants')
-      .select('agency_subdivision')
-      .not('agency_subdivision', 'is', null)
-      .order('agency_subdivision', { ascending: true }),
+      .select('funding_organization_name')
+      .not('funding_organization_name', 'is', null)
+      .order('funding_organization_name', { ascending: true }),
     
     // Grant types
-    supabaseClient
+    serviceClient
       .from('grants')
       .select('grant_type')
       .not('grant_type', 'is', null)
       .order('grant_type', { ascending: true }),
     
-    // Activity codes
-    supabaseClient
+    // Funding instruments
+    serviceClient
       .from('grants')
-      .select('activity_code')
-      .not('activity_code', 'is', null)
-      .order('activity_code', { ascending: true }),
+      .select('funding_instrument')
+      .not('funding_instrument', 'is', null)
+      .order('funding_instrument', { ascending: true }),
     
-    // Activity categories (array field)
-    supabaseClient
+    // Geographic scopes
+    serviceClient
       .from('grants')
-      .select('activity_category')
-      .not('activity_category', 'is', null),
-    
-    // Announcement types
-    supabaseClient
-      .from('grants')
-      .select('announcement_type')
-      .not('announcement_type', 'is', null)
-      .order('announcement_type', { ascending: true }),
-    
-    // Eligible applicant types (array field)
-    supabaseClient
-      .from('grants')
-      .select('eligible_applicants')
-      .not('eligible_applicants', 'is', null),
-    
-    // Data sources
-    supabaseClient
-      .from('grants')
-      .select('data_source')
-      .not('data_source', 'is', null)
-      .order('data_source', { ascending: true }),
+      .select('geographic_scope')
+      .not('geographic_scope', 'is', null)
+      .order('geographic_scope', { ascending: true }),
     
     // Status
-    supabaseClient
+    serviceClient
       .from('grants')
       .select('status')
       .not('status', 'is', null)
-      .order('status', { ascending: true })
+      .order('status', { ascending: true }),
+    
+    // Data sources
+    serviceClient
+      .from('data_sources')
+      .select('id, display_name, name')
+      .order('display_name', { ascending: true })
   ]);
 
   // Check for errors
   const errors = [
-    agenciesResult.error,
-    subdivisionsResult.error,
+    organizationsResult.error,
     grantTypesResult.error,
-    activityCodesResult.error,
-    activityCategoriesResult.error,
-    announcementTypesResult.error,
-    applicantTypesResult.error,
-    dataSourcesResult.error,
-    statusesResult.error
+    fundingInstrumentsResult.error,
+    geographicScopesResult.error,
+    statusesResult.error,
+    dataSourcesResult.error
   ].filter(Boolean);
 
   if (errors.length > 0) {
@@ -515,33 +253,19 @@ router.get('/metadata', asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Extract unique values
-  const agencies = Array.from(new Set(agenciesResult.data?.map((item: any) => item.agency_name) || []));
-  const subdivisions = Array.from(new Set(subdivisionsResult.data?.map((item: any) => item.agency_subdivision) || []));
+  const organizations = Array.from(new Set(organizationsResult.data?.map((item: any) => item.funding_organization_name) || []));
   const grantTypes = Array.from(new Set(grantTypesResult.data?.map((item: any) => item.grant_type) || []));
-  const activityCodes = Array.from(new Set(activityCodesResult.data?.map((item: any) => item.activity_code) || []));
-  const announcementTypes = Array.from(new Set(announcementTypesResult.data?.map((item: any) => item.announcement_type) || []));
-  const dataSources = Array.from(new Set(dataSourcesResult.data?.map((item: any) => item.data_source) || []));
+  const fundingInstruments = Array.from(new Set(fundingInstrumentsResult.data?.map((item: any) => item.funding_instrument) || []));
+  const geographicScopes = Array.from(new Set(geographicScopesResult.data?.map((item: any) => item.geographic_scope) || []));
   const statuses = Array.from(new Set(statusesResult.data?.map((item: any) => item.status) || []));
 
-  // Process array fields
-  const activityCategories = Array.from(new Set(
-    activityCategoriesResult.data?.flatMap((item: any) => item.activity_category || []) || []
-  )).sort();
-
-  const applicantTypes = Array.from(new Set(
-    applicantTypesResult.data?.flatMap((item: any) => item.eligible_applicants || []) || []
-  )).sort();
-
   const metadata = {
-    agencies,
-    subdivisions,
+    organizations,
     grantTypes,
-    activityCodes,
-    activityCategories,
-    announcementTypes,
-    applicantTypes,
-    dataSources,
-    statuses
+    fundingInstruments,
+    geographicScopes,
+    statuses,
+    dataSources: dataSourcesResult.data || []
   };
 
   res.json({
@@ -552,7 +276,8 @@ router.get('/metadata', asyncHandler(async (req: Request, res: Response) => {
 
 // POST /api/grants/batch - Get multiple grants by IDs
 router.post('/batch',
-  cacheConfigs.short, // Add caching for batch requests
+  cacheConfigs.short,
+  optionalAuthMiddleware,
   asyncHandler(async (req: Request, res: Response) => {
     const { grant_ids } = req.body;
     
@@ -586,8 +311,8 @@ router.post('/batch',
       userId: req.user?.id || 'unauthenticated'
     });
     
-    // Fetch grants using the batch service method
-    const grants = await grantsService.getGrantsByIds(grant_ids, req.supabase || supabaseClient);
+    // Use service role client so unauthenticated users can fetch grants
+    const grants = await grantsService.getGrantsByIds(grant_ids, getServiceRoleClient());
     
     res.json({
       message: 'Grants fetched successfully',
@@ -655,83 +380,53 @@ router.post('/batch/interactions',
   })
 );
 
-// GET /api/grants/agencies/list - Get all distinct grant agencies
-router.get('/agencies/list', asyncHandler(async (req: Request, res: Response) => {
-  logger.debug('Fetching distinct grant agencies');
-  
-  // Query to get distinct agency names, ordered alphabetically
-  const { data, error } = await supabaseClient
-    .from('grants')
-    .select('agency_name')
-    .not('agency_name', 'is', null)
-    .order('agency_name', { ascending: true });
-
-  if (error) {
-    throw new AppError('Failed to fetch agencies', 500);
-  }
-
-  // Extract unique agency names
-  const uniqueAgencies = Array.from(new Set(data?.map((item: any) => item.agency_name) || []));
-
-  res.json({
-    message: 'Agencies fetched successfully',
-    agencies: uniqueAgencies,
-    count: uniqueAgencies.length
-  });
-}));
+// GET /api/grants/stats - Get grant statistics
+router.get('/stats',
+  cacheConfigs.medium,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.debug('Fetching grant statistics');
+    
+    // Use service role client to bypass RLS for public statistics
+    const stats = await grantsService.getGrantStats(getServiceRoleClient());
+    
+    res.json({
+      message: 'Statistics fetched successfully',
+      stats
+    });
+  })
+);
 
 // GET /api/grants/:id - Get a specific grant by ID
-router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const grantId = req.params.id;
+router.get('/:id', 
+  optionalAuthMiddleware,
+  asyncHandler(async (req: Request, res: Response) => {
+    const grantId = req.params.id;
 
-  // Validate UUID format
-  try {
-    validateUUID(grantId, true);
-  } catch (error) {
-    throw new AppError('Invalid grant ID format', 400);
-  }
+    // Validate UUID format
+    try {
+      validateUUID(grantId, true);
+    } catch (error) {
+      throw new AppError('Invalid grant ID format', 400);
+    }
 
-  logger.debug('Grant details request', {
-    grantId,
-    userId: req.user?.id || 'unauthenticated'
-  });
-  
-  // Fetch the grant
-  const { data: grantData, error: grantError } = await supabaseClient
-    .from('grants')
-    .select('*')
-    .eq('id', grantId)
-    .single();
-
-  if (grantError || !grantData) {
-    throw new AppError('Grant not found', 404);
-  }
-
-  // Fetch the contacts for this grant
-  const { data: contactsData, error: contactsError } = await supabaseClient
-    .from('grant_contacts')
-    .select('*')
-    .eq('grant_id', grantId)
-    .order('display_order', { ascending: true });
-
-  if (contactsError) {
-    logger.warn('Error fetching grant contacts', {
-      grantId
+    logger.debug('Grant details request', {
+      grantId,
+      userId: req.user?.id || 'unauthenticated'
     });
-    // Continue without contacts rather than failing the whole request
-  }
+    
+    // Use service role client so unauthenticated users can view grant details
+    const grant = await grantsService.getGrantById(grantId, getServiceRoleClient());
 
-  // Combine grant data with contacts
-  const grant = {
-    ...grantData,
-    contacts: contactsData || []
-  };
+    if (!grant) {
+      throw new AppError('Grant not found', 404);
+    }
 
-  res.json({
-    message: 'Grant fetched successfully',
-    grant
-  });
-}));
+    res.json({
+      message: 'Grant fetched successfully',
+      grant
+    });
+  })
+);
 
 // POST /api/grants/:id/save - Save a grant for a user
 router.post('/:id/save',
@@ -749,38 +444,22 @@ router.post('/:id/save',
 
     logger.debug('Save grant request', { grantId, userId });
 
-    // Check if grant exists
-    const { data: grant, error: grantError } = await supabaseClient
-      .from('grants')
-      .select('id')
-      .eq('id', grantId)
-      .single();
-
-    if (grantError || !grant) {
+    // Check if grant exists using service role client
+    const grant = await grantsService.getGrantById(grantId, getServiceRoleClient());
+    
+    if (!grant) {
       throw new AppError('Grant not found', 404);
     }
 
-    // Insert or update the saved interaction
-    const { data, error } = await supabaseClient
-      .from('user_interactions')
-      .upsert({
-        user_id: userId,
-        grant_id: grantId,
-        action: 'saved',
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,grant_id,action'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new AppError('Failed to save grant', 500);
-    }
+    // Use users service to record the interaction
+    const interaction = await usersService.recordUserInteraction(supabaseClient, userId, {
+      grant_id: grantId,
+      action: 'saved'
+    });
 
     res.json({
       message: 'Grant saved successfully',
-      interaction: data
+      interaction
     });
   })
 );
@@ -835,38 +514,22 @@ router.post('/:id/apply',
 
     logger.debug('Apply to grant request', { grantId, userId });
 
-    // Check if grant exists
-    const { data: grant, error: grantError } = await supabaseClient
-      .from('grants')
-      .select('id')
-      .eq('id', grantId)
-      .single();
-
-    if (grantError || !grant) {
+    // Check if grant exists using service role client
+    const grant = await grantsService.getGrantById(grantId, getServiceRoleClient());
+    
+    if (!grant) {
       throw new AppError('Grant not found', 404);
     }
 
-    // Insert or update the applied interaction
-    const { data, error } = await supabaseClient
-      .from('user_interactions')
-      .upsert({
-        user_id: userId,
-        grant_id: grantId,
-        action: 'applied',
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,grant_id,action'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new AppError('Failed to record application', 500);
-    }
+    // Use users service to record the interaction
+    const interaction = await usersService.recordUserInteraction(supabaseClient, userId, {
+      grant_id: grantId,
+      action: 'applied'
+    });
 
     res.json({
       message: 'Grant application recorded successfully',
-      interaction: data
+      interaction
     });
   })
 );
@@ -887,38 +550,22 @@ router.post('/:id/ignore',
 
     logger.debug('Ignore grant request', { grantId, userId });
 
-    // Check if grant exists
-    const { data: grant, error: grantError } = await supabaseClient
-      .from('grants')
-      .select('id')
-      .eq('id', grantId)
-      .single();
-
-    if (grantError || !grant) {
+    // Check if grant exists using service role client
+    const grant = await grantsService.getGrantById(grantId, getServiceRoleClient());
+    
+    if (!grant) {
       throw new AppError('Grant not found', 404);
     }
 
-    // Insert or update the ignored interaction
-    const { data, error } = await supabaseClient
-      .from('user_interactions')
-      .upsert({
-        user_id: userId,
-        grant_id: grantId,
-        action: 'ignored',
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,grant_id,action'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new AppError('Failed to record ignore action', 500);
-    }
+    // Use users service to record the interaction
+    const interaction = await usersService.recordUserInteraction(supabaseClient, userId, {
+      grant_id: grantId,
+      action: 'ignored'
+    });
 
     res.json({
       message: 'Grant ignored successfully',
-      interaction: data
+      interaction
     });
   })
 );

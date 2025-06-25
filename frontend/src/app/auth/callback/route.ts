@@ -8,7 +8,6 @@ export async function GET(request: Request) {
 
   // Handle OAuth errors
   if (error) {
-    
     return NextResponse.redirect(`${requestUrl.origin}/login?error=auth_failed`);
   }
 
@@ -22,11 +21,9 @@ export async function GET(request: Request) {
       const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
       
       if (sessionError) {
-        
         return NextResponse.redirect(`${requestUrl.origin}/login?error=auth_failed`);
       }
     } catch {
-      
       return NextResponse.redirect(`${requestUrl.origin}/login?error=unexpected_error`);
     }
   }

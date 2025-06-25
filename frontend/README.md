@@ -1,12 +1,12 @@
 # Grantify.ai Frontend
 
-Modern Next.js 15 application providing an intuitive interface for grant discovery with AI-powered search, personalized recommendations, and comprehensive accessibility features.
+Next.js-based frontend application for the Grantify.ai grant discovery platform.
 
 ## 🎨 Features
 
-- **🔍 Semantic Search**: Natural language grant discovery with vector embeddings
+- **🔍 Smart Search**: Full-text grant discovery across 13+ API data sources
 - **📊 Advanced Filtering**: 20+ filter criteria with real-time updates
-- **🤖 AI Recommendations**: Weighted algorithm combining semantic similarity and preferences
+- **🤖 Smart Recommendations**: Algorithm based on user preferences and interaction history
 - **📱 Responsive Design**: Mobile-first with full touch support
 - **♿ Accessibility**: WCAG 2.1 AA compliant with screen reader optimization
 - **⚡ Performance**: Batch API calls, request deduplication, and intelligent caching
@@ -16,16 +16,16 @@ Modern Next.js 15 application providing an intuitive interface for grant discove
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 15.3.1 with App Router
+- **Framework**: Next.js 15.3.4 with App Router
 - **Language**: TypeScript 5 (strict mode)
 - **Styling**: Tailwind CSS 3.4 with custom design system
 - **State Management**: React Context API with custom hooks
-- **Authentication**: Supabase Auth with magic links
+- **Authentication**: Supabase Auth with Google OAuth
 - **API Client**: Custom client with caching and deduplication
 - **Performance**: React 19, Turbopack, image optimization
 - **Accessibility**: ARIA support, keyboard navigation, screen reader guides
 - **Monitoring**: Sentry integration with session replay
-- **SEO**: Optimized meta tags, structured data, sitemap generation
+- **Testing**: Jest + React Testing Library + Playwright
 
 ## 🚀 Getting Started
 
@@ -47,12 +47,7 @@ cd frontend
 npm install
 ```
 
-3. Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
+3. Create `.env.local` file:
 ```env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
@@ -62,8 +57,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-# Optional
-NEXT_PUBLIC_GOOGLE_ADSENSE_ID=your-adsense-id
+# Optional - for monitoring
 NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
 SENTRY_AUTH_TOKEN=your-sentry-auth-token
 ```
@@ -156,10 +150,13 @@ Recommendations show AI-calculated scores:
 
 ### Advanced Filtering System
 Comprehensive filter options:
-- **Funding Range**: Min/max with "include no funding" option
-- **Deadline Range**: Date pickers with "include no deadline"
-- **Agencies**: Multi-select from 50+ agencies
-- **Categories**: Research areas and grant types
+- **Funding Range**: Min/max amounts with "include no funding" option
+- **Deadline Range**: Date pickers with "include no deadline" and overdue options
+- **Organizations**: Multi-select from 50+ funding organizations
+- **Cost Sharing**: Filter by cost sharing requirements (Yes/No/Both)
+- **Applicant Types**: Filter by eligible applicant categories
+- **Geographic Scope**: Filter by geographic coverage and location
+- **Grant Details**: CFDA numbers, funding instruments, and grant types
 - **Interaction Exclusion**: Hide saved/applied/ignored grants
 
 ### Accessibility Features
@@ -180,68 +177,18 @@ Comprehensive filter options:
 - **Alt Text**: Meaningful descriptions for all images
 - **Semantic HTML**: Proper heading hierarchy and landmarks
 
-## 🧩 Custom Hooks
+## 🧩 Key Components & Hooks
 
-### useFetchDashboardData
-Manages all dashboard data with optimizations:
-```typescript
-const {
-  recommendedGrants,  // AI recommendations
-  savedGrants,        // User's saved grants
-  appliedGrants,      // Grants user applied to
-  ignoredGrants,      // Hidden grants
-  loading,
-  error,
-  refetch,
-  fetchReplacementRecommendations
-} = useFetchDashboardData({ targetRecommendedCount: 10 });
-```
+### Custom Hooks
+- **useFetchDashboardData**: Manages dashboard data with batch loading
+- **useGrantInteractions**: Handles grant actions with optimistic updates
+- **useKeyboardShortcuts**: Global keyboard navigation
+- **useUserPreferences**: Preference management
 
-### useGrantInteractions
-Handles grant actions with optimistic updates:
-```typescript
-const {
-  saveGrant,      // Save for later
-  applyToGrant,   // Mark as applied
-  ignoreGrant,    // Hide from results
-  removeSaved,    // Unsave grant
-  isProcessing
-} = useGrantInteractions();
-```
-
-### useKeyboardShortcuts
-Global keyboard navigation:
-```typescript
-useKeyboardShortcuts({
-  'cmd+k': openSearch,
-  'cmd+s': saveCurrentGrant,
-  'escape': closeModal,
-  '?': showHelp
-});
-```
-
-## 🎨 Component Library
-
-### Grant Cards
-- **DashboardGrantCard**: Optimized for list views
-- **GrantCard**: Full details with actions
-- **GrantCardIcons**: Visual indicators for grant attributes
-- **GrantCardFooter**: Action buttons with loading states
-
-### Filters
-- **CompactAdvancedFilterPanel**: Optimized filter interface
-- **ActiveFilters**: Shows applied filters with removal
-- **FundingRangeFilter**: Dual slider with validation
-- **DeadlineFilter**: Date range picker
-- **CheckboxGrid**: Multi-select filter options
-
-### UI Components
-- **Button**: Accessible button with loading states
-- **Badge**: Status and category indicators  
-- **Container**: Responsive layout wrapper
-- **SkipLink**: Accessibility navigation
-- **ErrorBoundary**: Graceful error handling
-- **AriaLiveAnnouncer**: Screen reader announcements
+### Component Library
+- **Grant Components**: GrantCard, GrantCardIcons, GrantCardFooter, ActionButton
+- **Filter Components**: CompactAdvancedFilterPanel, ActiveFilters, FundingRangeFilter, DeadlineFilter
+- **UI Components**: Button, Badge, Container, SkipLink, ErrorBoundary
 
 ## ⚡ Performance Optimizations
 
@@ -264,49 +211,24 @@ experimental: {
 }
 ```
 
-## 🔐 Security Implementation
+## 🔐 Security
 
-### Authentication Flow
-1. **Magic Link**: Passwordless email authentication
-2. **OAuth**: Google sign-in support
-3. **Session Management**: Automatic token refresh
-4. **Protected Routes**: Middleware-based protection
+- **Authentication**: Google OAuth via Supabase
+- **Session Management**: Automatic token refresh
+- **CSRF Protection**: Token-based protection
+- **Security Headers**: X-Frame-Options, CSP, HSTS, etc.
+- **Input Sanitization**: DOMPurify for HTML content
 
-### Security Headers
-```typescript
-// Configured in next.config.ts
-- X-Frame-Options: SAMEORIGIN
-- X-Content-Type-Options: nosniff  
-- X-XSS-Protection: 1; mode=block
-- Referrer-Policy: origin-when-cross-origin
-- Content-Security-Policy: Configured for production
-- Strict-Transport-Security: HSTS enabled
-```
-
-### CSRF Protection
-- Token-based CSRF protection
-- Automatic token refresh
-- Secure cookie handling
-
-### Input Sanitization
-- DOMPurify for HTML content
-- Input validation on all forms
-- SQL injection prevention via Supabase
-
-## 🧪 Development Scripts
+## 🧪 Testing
 
 ```bash
-# Development
-npm run dev              # Start with Turbopack
-npm run build           # Production build
-npm run start           # Production server
-npm run lint            # ESLint checking
-
-# Type checking
-npm run type-check      # TypeScript validation
-
-# Testing
-npm test                # Run test suite
+npm test                 # Run unit tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # Coverage report
+npm run test:e2e        # E2E tests with Playwright
+npm run test:e2e:ui     # Playwright UI mode
+npm run test:perf       # Performance tests
+npm run test:a11y       # Accessibility tests
 ```
 
 ## 🚀 Deployment
@@ -323,134 +245,22 @@ docker run -p 3000:3000 grantify-frontend
 vercel deploy --prod
 ```
 
-### Environment Variables for Production
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-anon-key
-NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com/api
-NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
-SENTRY_AUTH_TOKEN=your-sentry-auth-token
-```
+See the main [README.md](../README.md) for detailed deployment instructions.
 
-See [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) for detailed instructions.
+## 📱 Progressive Web App
 
-## 🔍 SEO & Analytics
-
-### SEO Implementation
-- Dynamic meta tags per page
-- Structured data for grants (JSON-LD)
-- Auto-generated sitemap.xml
-- Open Graph tags for social sharing
-- Twitter Card meta tags
-- Canonical URLs for all pages
-- robots.txt configuration
-
-### Analytics Integration
-- Google AdSense support (optional)
-- Sentry performance monitoring
-- Custom analytics events
-- User behavior tracking (privacy-compliant)
-
-```tsx
-// components/ui/GoogleAdSense.tsx
-<GoogleAdSense adSlot="your-ad-slot" />
-```
-
-## 📱 Progressive Web App (PWA)
-
-### PWA Features
 - **Offline Support**: Service worker caching
 - **Install Prompt**: Add to home screen
 - **App Manifest**: Native app experience
 - **Push Notifications**: Grant deadline reminders (planned)
 
-### Configuration
-```json
-// public/manifest.json
-{
-  "name": "Grantify.ai",
-  "short_name": "Grantify",
-  "theme_color": "#1a73e8",
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "start_url": "/dashboard"
-}
-```
+## 🐛 Troubleshooting
 
-### Service Worker
-- Caches static assets
-- Network-first strategy for API calls
-- Offline fallback pages
-
-## 🐛 Common Issues & Solutions
-
-### Hydration Errors
-- Ensure consistent server/client rendering
-- Check for browser-only APIs in SSR
-
-### Authentication Issues
-- Verify Supabase URL and keys
-- Check email configuration in Supabase
-
-### Performance Issues
-- Run `npm run analyze` to check bundle size
-- Enable React DevTools Profiler
-- Check for unnecessary re-renders
-
-### Build Errors
-- Clear `.next` directory and `node_modules/.cache`
-- Run `npm run type-check`
-- Check for missing environment variables
-- Verify all dynamic imports are properly typed
-
-### NaN Display Issues
-- Check API response parsing
-- Verify prop types and defaults
-- Use Number.isFinite() for validation
-
-## 📦 Monitoring & Debugging
-
-### Sentry Integration
-- Error tracking with source maps
-- Performance monitoring
-- Session replay for debugging
-- User context capture
-- Release tracking
-
-### Debug Tools
-```bash
-# Check bundle size
-npm run analyze
-
-# Type checking
-npm run type-check
-
-# Performance profiling
-NEXT_PUBLIC_PROFILE=true npm run dev
-```
-
-## 🤝 Contributing
-
-1. Follow TypeScript strict mode
-2. Maintain accessibility standards
-3. Write meaningful component names
-4. Update types when adding features
-5. Test on mobile devices
-6. Run linting before commits
-7. Check Sentry for errors before deploying
+- **Hydration Errors**: Check for browser-only APIs in SSR
+- **Auth Issues**: Verify Supabase URL and keys
+- **Build Errors**: Clear `.next` directory and check environment variables
+- **Performance**: Run `npm run build:analyze` to check bundle size
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
-
-## 📊 Project Status
-
-- **Framework**: Next.js 15.3.1 (latest)
-- **React**: Version 19 with new optimizations
-- **TypeScript**: Strict mode enabled
-- **Production Ready**: ✅ Yes
-- **PWA Support**: ✅ Enabled
-- **Accessibility**: WCAG 2.1 AA compliant
-- **Browser Support**: Modern browsers (ES2017+)
-- **Mobile**: Fully responsive design
+Part of the Grantify.ai project - MIT License

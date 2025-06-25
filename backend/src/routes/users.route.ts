@@ -117,9 +117,10 @@ router.post('/interactions',
   userInteractionValidation,
   async (req: Request, res: Response) => {
     try {
-      // Create interaction with authenticated user ID
+      // Create interaction with authenticated user ID (exclude timestamp from req.body)
+      const { timestamp, ...requestData } = req.body;
       const interaction: UserInteraction = {
-        ...req.body,
+        ...requestData,
         user_id: req.user.id
       };
       

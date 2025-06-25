@@ -64,7 +64,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     deadlineMaxDays: MAX_DEADLINE_DAYS,
     includeNoDeadline: false,
     onlyNoDeadline: false,
-    costSharing: undefined,
+    costSharingRequired: undefined,
     sortBy: 'relevance',
     page: 1
   });
@@ -190,7 +190,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       deadlineMaxDays: MAX_DEADLINE_DAYS,
       includeNoDeadline: true,
       onlyNoDeadline: false,
-      costSharing: undefined,
+      costSharingRequired: undefined,
       sortBy: 'relevance',
       page: 1
     });

@@ -17,8 +17,17 @@
     "lint": "eslint src --ext .js,.ts",
     "prebuild": "rimraf dist",
     "postbuild": "copyfiles -u 1 src/**/*.d.ts dist/",
-    "process:nih:all": "ts-node src/scripts/processAllNIHGrants.ts",
-    "update:nih": "ts-node src/scripts/updateNIHGrants.ts"
+    "grants:load-all": "ts-node scripts/grants-cli.ts load-all",
+    "grants:update": "ts-node scripts/grants-cli.ts update",
+    "grants:status": "ts-node scripts/grants-cli.ts status",
+    "grants:load-source": "ts-node scripts/grants-cli.ts load-source",
+    "grants:scheduler": "ts-node scripts/update-grants-scheduler.ts",
+    "update:service": "ts-node scripts/update_grants.ts",
+    "monitoring": "ts-node scripts/monitoring.ts",
+    "update:daily": "ts-node scripts/daily_grants_update.ts",
+    "cron:setup": "bash scripts/setup_daily_cron.sh",
+    "test:constraint": "node scripts/test-user-interactions-constraint.js",
+    "test:constraint:ts": "ts-node scripts/test-user-interactions-constraint.ts"
   },
   "keywords": [
     "grants",
@@ -29,11 +38,14 @@
   "author": "Michael Chen",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^9.28.1",
     "@sentry/profiling-node": "^9.28.1",
     "@supabase/supabase-js": "^2.10.0",
+    "@types/xml2js": "^0.4.14",
+    "axios": "^1.10.0",
+    "chalk": "^4.1.2",
     "cors": "^2.8.5",
+    "cron": "^4.3.1",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-rate-limit": "^7.5.0",
@@ -43,9 +55,10 @@
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
     "node-cron": "^4.0.7",
-    "puppeteer": "^24.9.0",
+    "ora": "^8.2.0",
     "validator": "^13.15.15",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

@@ -109,6 +109,8 @@ export const cacheConfigs = {
   // Short cache for frequently changing data
   short: cacheMiddleware({ ttl: 180 }), // 3 minutes
   
+  // Medium cache for moderately changing data
+  medium: cacheMiddleware({ ttl: 900 }), // 15 minutes
   
   // Cache for recommendations
   recommendations: cacheMiddleware({

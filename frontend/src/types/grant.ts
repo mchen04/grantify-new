@@ -1,58 +1,49 @@
 // Grant type definitions
-export interface GrantContact {
-  id?: string;
-  contact_type: string;
-  contact_name?: string;
-  contact_role?: string;
-  contact_organization?: string;
-  email?: string;
-  phone?: string;
-  url?: string;
-  display_order?: number;
-  notes?: string;
-}
 
 export interface Grant {
   id: string;
   title: string;
-  agency_name: string;
-  agency_code?: string;
-  agency_subdivision?: string;
-  opportunity_id: string;
+  funding_organization_name: string;
+  funding_organization_code?: string;
+  funding_organization_subdivision?: string;
+  source_identifier: string;
   opportunity_number?: string;
-  close_date: string | null;
-  post_date: string | null;
+  application_deadline: string | null;
+  posted_date: string | null;
   loi_due_date?: string | null;
   expiration_date?: string | null;
-  earliest_start_date?: string | null;
-  total_funding?: number | null;
-  award_ceiling: number | null;
-  award_floor?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  total_funding_available?: number | null;
+  funding_amount_max: number | null;
+  funding_amount_min?: number | null;
   expected_award_count?: number | null;
   project_period_max_years?: number | null;
-  description_short: string;
-  description_full: string;
-  activity_category: string[];
-  activity_code?: string;
+  summary: string;
+  description: string;
+  activity_categories?: string[];
+  cfda_numbers?: string[];
   grant_type?: string | null;
   eligible_applicants: string[];
-  eligibility_pi?: string;
-  cost_sharing: boolean;
+  eligibility_criteria?: string;
+  cost_sharing_required: boolean;
   source_url: string | null;
-  data_source?: string;
+  application_url?: string | null;
+  guidelines_url?: string | null;
+  data_source_id?: string;
   status?: string;
-  contacts?: GrantContact[];
-  announcement_type?: string;
-  clinical_trial_allowed?: boolean;
-  additional_notes?: string;
+  funding_instrument?: string;
+  geographic_scope?: string;
+  countries?: string[];
+  states?: string[];
   keywords?: string[];
   category?: string;
   interactions?: Array<{
     action: 'saved' | 'applied' | 'ignored';
     timestamp: string;
   }> | null;
-  match_score?: number;
-  similarity_score?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface GrantFilter {
@@ -77,36 +68,38 @@ export interface GrantFilter {
   postDateTo?: string;
   loiDueDateFrom?: string;
   loiDueDateTo?: string;
-  earliestStartDateFrom?: string;
-  earliestStartDateTo?: string;
+  startDateFrom?: string;
+  startDateTo?: string;
   // Project period
   projectPeriodMinYears?: number;
   projectPeriodMaxYears?: number;
-  // Agency filters
-  agencies?: string[];
-  agency_name?: string;
-  agency_subdivision?: string;
-  agency_subdivisions?: string[];
-  agency_codes?: string[];
+  // Organization filters
+  organizations?: string[];
+  funding_organization_name?: string;
+  organization_subdivision?: string;
+  organization_subdivisions?: string[];
+  organization_codes?: string[];
   // Grant type filters
   grant_type?: string;
   grant_types?: string[];
-  activity_codes?: string[];
+  cfda_numbers?: string[];
   activity_categories?: string[];
-  announcement_types?: string[];
+  funding_instruments?: string[];
   // Eligibility filters
   eligible_applicant_types?: string[];
-  eligibility_pi?: string;
+  eligibility_criteria?: string;
+  // Geographic filters
+  geographic_scope?: string;
+  countries?: string[];
+  states?: string[];
   // Content filters
   keywords?: string[];
   categories?: string[];
   // Other filters
-  costSharing?: boolean | null;
-  clinicalTrialAllowed?: boolean | null;
-  status?: string;
+  costSharingRequired?: boolean | null;
   statuses?: string[];
   sources?: string[];
-  data_sources?: string[];
+  data_source_ids?: string[];
   // Pagination and sorting
   sortBy: string;
   page: number;
@@ -120,12 +113,4 @@ export interface SelectOption {
 
 export interface ScoredGrant extends Grant {
   matchScore?: number;
-}
-
-export interface SimilarGrant {
-  id: string;
-  title: string;
-  agency: string;
-  deadline: string;
-  similarity_score?: number;
 }

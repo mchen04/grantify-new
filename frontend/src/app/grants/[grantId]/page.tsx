@@ -8,9 +8,8 @@ import Layout from '@/components/layout/Layout';
 import apiClient from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInteractions } from '@/contexts/InteractionContext';
-import { fetchSimilarGrants, formatSimilarGrant } from '@/lib/similarGrants';
 import { parseTextWithLinks } from '@/utils/formatters';
-import { Grant, GrantContact } from '@/types/grant';
+import { Grant } from '@/types/grant';
 import { UserInteraction as Interaction, InteractionStatus } from '@/types/interaction';
 import GoogleAdSense from '@/components/ui/GoogleAdSense';
 import { ADSENSE_CONFIG } from '@/lib/config';
@@ -128,125 +127,6 @@ interface SimilarGrant {
   deadline: string;
 }
 
-// Contact Card Component
-const ContactCard: React.FC<{ contact: GrantContact }> = ({ contact }) => {
-  return (
-    <div className="space-y-3">
-      {/* Contact Type Header */}
-      <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-        <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-        <h3 className="text-sm font-semibold text-gray-900 capitalize">
-          {contact.contact_type.replace(/_/g, ' ')}
-        </h3>
-      </div>
-      
-      {/* Contact Details */}
-      <div className="space-y-2">
-        {contact.contact_name && (
-          <div className="flex items-start gap-3">
-            <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-gray-900 text-sm">{contact.contact_name}</p>
-              {contact.contact_role && (
-                <p className="text-xs text-gray-600 mt-1">{contact.contact_role}</p>
-              )}
-              {contact.contact_organization && (
-                <p className="text-xs text-gray-600 mt-1">{contact.contact_organization}</p>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {contact.email && (
-          <div className="flex items-center gap-3">
-            <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <a 
-              href={`mailto:${contact.email}`} 
-              className="text-primary-600 hover:text-primary-700 text-sm font-medium hover:underline"
-            >
-              {contact.email}
-            </a>
-          </div>
-        )}
-        
-        {contact.phone && (
-          <div className="flex items-start gap-3">
-            <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div className="space-y-1 min-w-0 flex-1">
-              {(() => {
-                const phoneText = contact.phone.trim();
-                const phoneNumbers = phoneText
-                  .split(/[,;|]|\sand\s|\sor\s|\n|\r\n|\r/)
-                  .map(phone => phone.trim())
-                  .filter(phone => phone.length > 0)
-                  .map(phone => phone.replace(/^[-\s]*/, '').replace(/[-\s]*$/, '').trim())
-                  .filter(phone => phone.length > 0);
-                
-                if (phoneNumbers.length > 1) {
-                  return (
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500 font-medium">
-                        {phoneNumbers.length} phone numbers:
-                      </p>
-                      <div className="space-y-1">
-                        {phoneNumbers.map((phone, phoneIndex) => (
-                          <div key={phoneIndex} className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></div>
-                            <a 
-                              href={`tel:${phone.replace(/[^\d+]/g, '')}`}
-                              className="text-gray-700 hover:text-primary-600 transition-colors text-sm"
-                            >
-                              {phone}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <a 
-                    href={`tel:${phoneNumbers[0]?.replace(/[^\d+]/g, '') || ''}`}
-                    className="text-gray-700 hover:text-primary-600 transition-colors text-sm font-medium"
-                  >
-                    {phoneNumbers[0] || phoneText}
-                  </a>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-        
-        {contact.url && (
-          <div className="flex items-center gap-3">
-            <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <a
-              href={contact.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:text-primary-700 text-sm font-medium hover:underline"
-            >
-              {contact.url.replace(/^https?:\/\//, '')}
-            </a>
-          </div>
-        )}
-        
-        {contact.notes && (
-          <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-yellow-800 mb-1">Note</p>
-                <p className="text-xs text-yellow-700 leading-relaxed">{contact.notes}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // Page params type for Next.js 15.1.7+
 type PageParams = {
@@ -277,15 +157,30 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [interactionState, setInteractionState] = useState<InteractionStatus | null>(null);
-  const [similarGrants, setSimilarGrants] = useState<SimilarGrant[]>([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [showApplyConfirmation, setShowApplyConfirmation] = useState(false);
   const [fromSource, setFromSource] = useState<string | null>(null);
   const [tabSource, setTabSource] = useState<string | null>(null);
   const [interactionLoading, setInteractionLoading] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showAllApplicants, setShowAllApplicants] = useState(false);
-  const [showAllContacts, setShowAllContacts] = useState(false);
+  const [similarGrants, setSimilarGrants] = useState<SimilarGrant[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  
+  // Helper function to fetch similar grants (placeholder implementation)
+  const fetchSimilarGrants = async (grantId: string, categories: string[], limit: number): Promise<any[]> => {
+    // TODO: Implement similar grants fetching logic
+    return [];
+  };
+  
+  // Helper function to format similar grant data
+  const formatSimilarGrant = (grant: any): SimilarGrant => {
+    return {
+      id: grant.id || '',
+      title: grant.title || '',
+      agency: grant.funding_organization_name || '',
+      deadline: grant.application_deadline || ''
+    };
+  };
   
   // No ads on grant detail pages for better user experience
   const getAdaptiveAdCount = useCallback(() => {
@@ -324,7 +219,7 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
         // Fetch similar grants
         setLoadingSimilar(true);
         try {
-          const similarGrantsData = await fetchSimilarGrants(grantId, (data as any).activity_category, 3);
+          const similarGrantsData = await fetchSimilarGrants(grantId, (data as any).activity_categories, 3);
           if (Array.isArray(similarGrantsData)) {
             setSimilarGrants(similarGrantsData.map(formatSimilarGrant));
           } else {
@@ -421,7 +316,7 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
     
     // Open the grant link in a new tab using source_url from database or fallback to grants.gov
     if (grant) {
-      const applyUrl = grant.source_url || `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grant.opportunity_id}`;
+      const applyUrl = grant.source_url || `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grant.source_identifier}`;
       window.open(applyUrl, '_blank');
     }
     
@@ -454,12 +349,12 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
   };
   
   // Calculate days remaining
-  const getDaysRemaining = (closeDate: string | null | undefined) => {
-    if (!closeDate) return null;
+  const getDaysRemaining = (deadline: string | null | undefined) => {
+    if (!deadline) return null;
     
     const today = new Date();
-    const closeDateObj = new Date(closeDate);
-    const daysRemaining = Math.ceil((closeDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const deadlineObj = new Date(deadline);
+    const daysRemaining = Math.ceil((deadlineObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     return daysRemaining;
   };
@@ -516,7 +411,7 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
   }
   
   // Calculate days remaining
-  const daysRemaining = getDaysRemaining(grant.close_date);
+  const daysRemaining = getDaysRemaining(grant.application_deadline);
   
   return (
     <Layout>
@@ -587,16 +482,16 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
               <div className="flex items-start gap-3 mb-4">
                 <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
-                  <p className="font-medium text-gray-900">{grant.data_source || grant.agency_name}</p>
-                  {grant.agency_subdivision && (
-                    <p className="text-sm text-gray-600">{grant.agency_subdivision}</p>
+                  <p className="font-medium text-gray-900">{grant.funding_organization_name}</p>
+                  {grant.funding_organization_subdivision && (
+                    <p className="text-sm text-gray-600">{grant.funding_organization_subdivision}</p>
                   )}
                 </div>
               </div>
               
               {/* Tags */}
               <div className="flex flex-wrap gap-2">
-                {grant.activity_category && grant.activity_category.map((category, index) => (
+                {grant.activity_categories && grant.activity_categories.map((category, index) => (
                   <span
                     key={index}
                     className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800"
@@ -701,15 +596,15 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
               <div className="prose max-w-none text-gray-700">
                 {showFullDescription ? (
                   <div className="space-y-4 animate-fade-in">
-                    {(grant.description_full ?? '').split('\n\n').map((paragraph, index) => (
+                    {(grant.description ?? '').split('\n\n').map((paragraph, index) => (
                       <p key={index} className="text-sm leading-relaxed">{paragraph}</p>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm leading-relaxed">{grant.description_short}</p>
+                  <p className="text-sm leading-relaxed">{grant.summary}</p>
                 )}
               </div>
-              {(grant.description_full && grant.description_full !== grant.description_short) && (
+              {(grant.description && grant.description !== grant.summary) && (
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
                   className="text-primary-600 hover:text-primary-700 font-medium mt-4 inline-flex items-center gap-1 text-sm transition-all duration-200"
@@ -774,88 +669,36 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
                   <p className="text-sm text-gray-500">No eligibility information available</p>
                 </div>
               )}
-              {grant.eligibility_pi && (
+              {grant.eligibility_criteria && (
                 <div className="mt-4 p-4 bg-primary-50 rounded-lg border border-primary-200">
                   <div className="flex items-start gap-2 mb-2">
                     <User className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
                     <p className="font-medium text-primary-900 text-sm">Principal Investigator Requirements</p>
                   </div>
-                  <p className="text-sm text-primary-800 ml-6">{grant.eligibility_pi}</p>
+                  <p className="text-sm text-primary-800 ml-6">{grant.eligibility_criteria}</p>
                 </div>
               )}
             </div>
             
-            {/* Contact Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Phone className="w-5 h-5 text-primary-600" />
-                  Contact Information
-                </div>
-                {grant.contacts && grant.contacts.length > 0 && (
-                  <span className="text-sm font-normal text-gray-500">
-                    {grant.contacts.length} contact{grant.contacts.length > 1 ? 's' : ''}
-                  </span>
-                )}
-              </h2>
-              
-              {grant.contacts && grant.contacts.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="space-y-4">
-                    {grant.contacts
-                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-                      .slice(0, showAllContacts ? grant.contacts.length : 3)
-                      .map((contact, index) => (
-                        <div key={index} className="p-4 rounded-lg border border-gray-200 hover:border-primary-200 hover:bg-primary-50/30 transition-colors">
-                          <ContactCard contact={contact} />
-                        </div>
-                      ))
-                    }
-                  </div>
-                  
-                  {grant.contacts.length > 3 && (
-                    <div className="text-center pt-2">
-                      <button
-                        onClick={() => setShowAllContacts(!showAllContacts)}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors duration-200"
-                      >
-                        {showAllContacts ? (
-                          <>
-                            Show Less Contacts
-                            <ChevronRight className="w-4 h-4 rotate-90 transition-transform duration-200" />
-                          </>
-                        ) : (
-                          <>
-                            Show All {grant.contacts.length} Contacts
-                            <ChevronRight className="w-4 h-4 transition-transform duration-200" />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Phone className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No contact information available</p>
-                </div>
-              )}
-              
-              {grant.source_url && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <a
-                    href={grant.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors font-medium text-sm"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Visit Agency Website
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
-            </div>
+            {/* Agency Website Link */}
+            {grant.source_url && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-primary-600" />
+                  Agency Information
+                </h3>
+                <a
+                  href={grant.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors font-medium text-sm"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Visit Agency Website
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
             
           </div>
           
@@ -869,7 +712,7 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
                 {/* Deadline */}
                 <div className="border-b border-gray-100 pb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Deadline</p>
-                  <p className="font-semibold text-gray-900">{formatDate(grant.close_date)}</p>
+                  <p className="font-semibold text-gray-900">{formatDate(grant.application_deadline)}</p>
                   {daysRemaining !== null && (
                     <p className={`text-sm font-medium mt-1 ${
                       daysRemaining < 14 ? 'text-error-600' :
@@ -885,20 +728,20 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
                 <div className="border-b border-gray-100 pb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Award Amount</p>
                   <p className="font-semibold text-gray-900">
-                    {grant.award_ceiling ? formatCurrency(grant.award_ceiling) : 'Not specified'}
+                    {grant.funding_amount_max ? formatCurrency(grant.funding_amount_max) : 'Not specified'}
                   </p>
                 </div>
                 
                 {/* Agency */}
                 <div className="border-b border-gray-100 pb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Agency</p>
-                  <p className="font-semibold text-gray-900">{grant.data_source || grant.agency_name}</p>
+                  <p className="font-semibold text-gray-900">{grant.funding_organization_name}</p>
                 </div>
                 
                 {/* Opportunity ID */}
                 <div className="border-b border-gray-100 pb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Opportunity ID</p>
-                  <p className="font-mono text-sm text-gray-900">{grant.opportunity_id}</p>
+                  <p className="font-mono text-sm text-gray-900">{grant.source_identifier}</p>
                 </div>
                 
                 {/* Expected Awards */}
@@ -913,8 +756,8 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">Cost Sharing</p>
                   <p className="font-semibold text-gray-900">
-                    {grant.cost_sharing !== undefined ? (
-                      grant.cost_sharing ? 'Required' : 'Not Required'
+                    {grant.cost_sharing_required !== undefined ? (
+                      grant.cost_sharing_required ? 'Required' : 'Not Required'
                     ) : 'Not specified'}
                   </p>
                 </div>
@@ -927,10 +770,10 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
               
               <div className="space-y-3">
                 {/* Posted Date */}
-                {grant.post_date && (
+                {grant.posted_date && (
                   <div className="flex justify-between items-start">
                     <span className="text-sm text-gray-600">Posted</span>
-                    <span className="text-sm font-medium text-gray-900">{formatDate(grant.post_date)}</span>
+                    <span className="text-sm font-medium text-gray-900">{formatDate(grant.posted_date)}</span>
                   </div>
                 )}
                 
@@ -951,22 +794,62 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
                 )}
                 
                 {/* Total Funding */}
-                {grant.total_funding && (
+                {grant.total_funding_available && (
                   <div className="flex justify-between items-start">
                     <span className="text-sm text-gray-600">Total Pool</span>
-                    <span className="text-sm font-medium text-gray-900">{formatCurrency(grant.total_funding)}</span>
+                    <span className="text-sm font-medium text-gray-900">{formatCurrency(grant.total_funding_available)}</span>
+                  </div>
+                )}
+                
+                {/* Funding Instrument */}
+                {grant.funding_instrument && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Funding Instrument</span>
+                    <span className="text-sm font-medium text-gray-900">{grant.funding_instrument}</span>
+                  </div>
+                )}
+                
+                {/* Geographic Scope */}
+                {grant.geographic_scope && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Geographic Scope</span>
+                    <span className="text-sm font-medium text-gray-900 capitalize">{grant.geographic_scope.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                
+                {/* CFDA Numbers */}
+                {grant.cfda_numbers && grant.cfda_numbers.length > 0 && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">CFDA Numbers</span>
+                    <span className="text-sm font-medium text-gray-900">{grant.cfda_numbers.join(', ')}</span>
+                  </div>
+                )}
+                
+                {/* Countries */}
+                {grant.countries && grant.countries.length > 0 && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Countries</span>
+                    <span className="text-sm font-medium text-gray-900">{grant.countries.join(', ')}</span>
+                  </div>
+                )}
+                
+                {/* States */}
+                {grant.states && grant.states.length > 0 && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">States</span>
+                    <span className="text-sm font-medium text-gray-900">{grant.states.join(', ')}</span>
                   </div>
                 )}
               </div>
             </div>
             
             {/* Additional Notes Card */}
-            {grant.additional_notes && (
+            {(grant as any).additional_notes && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Notes</h3>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="space-y-2">
-                    {grant.additional_notes.split('\n\n').map((paragraph, index) => {
+                    {(grant as any).additional_notes.split('\n\n').map((paragraph: string, index: number) => {
                       const segments = parseTextWithLinks(paragraph);
                       return (
                         <p key={index} className="text-sm leading-relaxed text-yellow-800">

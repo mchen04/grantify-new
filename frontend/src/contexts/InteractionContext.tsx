@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import apiClient from '../lib/apiClient';
 import { InteractionStatus, UserInteractionsResponse } from '../types/interaction';
 import useFetchUserInteractions from '../hooks/useFetchUserInteractions';
+import supabase from '../lib/supabaseClient';
 
 // Define the shape of the context state
 interface InteractionContextType {
@@ -20,7 +21,7 @@ const InteractionContext = createContext<InteractionContextType | undefined>(und
 
 // Create the provider component
 export const InteractionProvider = ({ children }: { children: ReactNode }) => {
-  const { user, session } = useAuth(); // Get user and session from AuthContext
+  const { user, session, isLoading: isAuthLoading } = useAuth(); // Get user, session, and loading state from AuthContext
   const userId = user?.id;
   const accessToken = session?.access_token;
   
@@ -30,15 +31,24 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
   const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState<boolean>(false);
   const [pendingUpdates, setPendingUpdates] = useState<Set<string>>(new Set()); // Track pending updates
   
+  // Debug log auth state
+  console.log('[InteractionContext] Auth state:', {
+    isAuthLoading,
+    userId,
+    hasAccessToken: !!accessToken,
+    hasSession: !!session,
+    willEnableFetch: !isAuthLoading && !!userId && !!accessToken && !!session
+  });
+  
   // Use the updated hook with explicit userId parameter
-  // Only enable fetching when we have both userId and a valid session
+  // Only enable fetching when auth is loaded and we have both userId and a valid session
   const {
     interactions: fetchedInteractions,
     loading: hookLoading,
     refetch: refetchInteractions
   } = useFetchUserInteractions({
     userId,
-    enabled: !!userId && !!accessToken && !!session
+    enabled: !isAuthLoading && !!userId && !!accessToken && !!session
   });
 
   // Update the interactions map when fetchedInteractions changes
@@ -95,8 +105,48 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to update user interaction with race condition prevention
   const updateUserInteraction = async (grantId: string, newAction: InteractionStatus | null) => {
+    console.log('[InteractionContext] updateUserInteraction called:', {
+      grantId,
+      newAction,
+      userId,
+      hasAccessToken: !!accessToken,
+      accessTokenLength: accessToken?.length
+    });
+    
     if (!userId || !accessToken) {
-      // Cannot update interaction: No authenticated user
+      console.error('[InteractionContext] Cannot update interaction: No authenticated user', {
+        userId,
+        hasAccessToken: !!accessToken
+      });
+      
+      // Show user-friendly error message
+      const message = 'Please sign in to save, ignore, or apply for grants';
+      
+      // Create and show toast notification
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-up';
+      toast.style.animation = 'slide-up 0.3s ease-out';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Remove toast after 3 seconds
+      setTimeout(() => {
+        toast.style.animation = 'slide-down 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+      
+      // Trigger auth refresh if we have a user but no access token
+      if (userId && !accessToken) {
+        console.log('[InteractionContext] User exists but no access token, attempting session refresh...');
+        try {
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.error('[InteractionContext] Session refresh failed:', error);
+          }
+        } catch (err) {
+          console.error('[InteractionContext] Session refresh error:', err);
+        }
+      }
       return;
     }
     
@@ -108,6 +158,16 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
     
     // Mark this grant as having a pending update
     setPendingUpdates(prev => new Set(prev).add(grantId));
+    
+    // Capture the current action BEFORE the optimistic update
+    const previousAction = interactionsMap[grantId] as InteractionStatus | undefined;
+    
+    console.log('[InteractionContext] Starting interaction update:', {
+      grantId,
+      previousAction,
+      newAction,
+      willDelete: newAction === null || (previousAction === newAction)
+    });
     
     // Use functional update to ensure we have the latest state
     setInteractionsMap(prevMap => {
@@ -126,20 +186,18 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
     });
     
     setLastInteractionTimestamp(Date.now()); // Update timestamp to trigger reactions
-    
-    const currentAction = interactionsMap[grantId] as InteractionStatus;
 
     try {
       // Clear the interactions cache after updating to ensure fresh data on next fetch
       const { cacheUtils } = await import('@/lib/apiClient');
       cacheUtils.clearInteractionsCache();
       
-      if (newAction === null || (currentAction === newAction)) {
+      if (newAction === null || (previousAction === newAction)) {
         // Call delete endpoint to remove the interaction
         await apiClient.users.deleteInteraction(
           userId,
           grantId,
-          currentAction,
+          previousAction || newAction!, // Use previousAction if available, otherwise newAction (for toggle case)
           accessToken
         );
       } else {
@@ -153,19 +211,20 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
       }
       // If backend update is successful, state is already updated optimistically
     } catch (error) {
-      // Error updating user interaction
+      console.error('[InteractionContext] Error updating interaction:', error);
       // Revert optimistic update if backend call fails using functional update
       setInteractionsMap(prevMap => {
         const revertedMap = { ...prevMap };
-        if (currentAction) {
-          revertedMap[grantId] = currentAction; // Restore previous action
+        if (previousAction) {
+          revertedMap[grantId] = previousAction; // Restore previous action
         } else {
           delete revertedMap[grantId]; // Remove if it didn't exist before
         }
         return revertedMap;
       });
       setLastInteractionTimestamp(Date.now()); // Update timestamp again to trigger reactions
-      // Handle error appropriately, maybe show a notification
+      // TODO: Show user notification about the error
+      throw error; // Re-throw to allow caller to handle
     } finally {
       // Remove from pending updates
       setPendingUpdates(prev => {
@@ -194,16 +253,18 @@ export const InteractionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     console.log('[InteractionContext] Context state:', {
       mapSize: Object.keys(interactionsMap).length,
-      isLoading: hookLoading || isLoading,
+      isLoading: isAuthLoading || hookLoading || isLoading,
+      isAuthLoading,
+      hookLoading,
       timestamp: lastInteractionTimestamp,
       userId
     });
-  }, [interactionsMap, hookLoading, isLoading, lastInteractionTimestamp, userId]);
+  }, [interactionsMap, isAuthLoading, hookLoading, isLoading, lastInteractionTimestamp, userId]);
   
   return (
     <InteractionContext.Provider value={{
       interactionsMap,
-      isLoading: hookLoading || isLoading,
+      isLoading: isAuthLoading || hookLoading || isLoading,
       fetchUserInteractions,
       updateUserInteraction,
       getInteractionStatus,

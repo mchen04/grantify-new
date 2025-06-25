@@ -1,74 +1,125 @@
-export interface GrantContact {
-  id?: string;
-  contact_type: string;
-  contact_name?: string;
-  contact_role?: string;
-  contact_organization?: string;
-  email?: string;
-  phone?: string;
-  url?: string;
-  display_order?: number;
-  notes?: string;
-}
-
+// Grant model matching the optimized database schema
 export interface Grant {
-  id: string;
+  // Core identification
+  id?: string;
+  data_source_id: string;
+  source_identifier: string;
+  source_url?: string | null;
+  
+  // Basic information
   title: string;
-  opportunity_id: string;
-  opportunity_number: string;
-  category: string;
-  grant_type: string;  // Renamed from funding_type
-  activity_code?: string;
-  activity_category: string[];
-  eligible_applicants: string[];
-  agency_name: string;
-  agency_subdivision?: string;
-  agency_code?: string;
-  post_date: Date | null;
-  close_date: Date | null;
-  loi_due_date?: Date | null;
-  expiration_date?: Date | null;
-  earliest_start_date?: Date | null;
-  total_funding: number | null;
-  award_ceiling: number | null;
-  award_floor: number | null;
-  expected_award_count?: number | null;
-  project_period_max_years?: number | null;
-  cost_sharing: boolean;
-  description_short: string;  // Renamed from description
-  description_full: string;   // New field for full description
-  source_url: string;         // Renamed from additional_info_url
-  data_source?: string;
-  status?: string;
-  contacts?: GrantContact[];
-  eligibility_pi?: string;
-  announcement_type?: string;
-  clinical_trial_allowed?: boolean;
-  additional_notes?: string;
-  keywords?: string[];
-  created_at?: Date;
-  updated_at?: Date;
+  status: 'open' | 'active' | 'forecasted' | 'closed' | 'awarded' | 'archived';
+  
+  // Organization information
+  funding_organization_name: string;
+  
+  // Financial information
+  currency?: string;
+  funding_amount_min?: number | null;
+  funding_amount_max?: number | null;
+  total_funding_available?: number | null;
+  
+  // Important dates
+  posted_date?: string | null;
+  application_deadline?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  
+  // Grant details
+  grant_type?: string | null;
+  funding_instrument?: string | null;
+  summary?: string | null;
+  description?: string | null;
+  eligibility_criteria?: string | null;
+  
+  // Geographic information
+  geographic_scope?: string | null;
+  countries?: string[] | null;
+  states?: string[] | null;
+  
+  // Additional information
+  cfda_numbers?: string[] | null;
+  opportunity_number?: string | null;
+  cost_sharing_required?: boolean | null;
+  application_url?: string | null;
+  guidelines_url?: string | null;
+  
+  // Metadata
+  raw_data?: any;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Search optimization
+  search_vector?: string | null;
 }
 
 export interface GrantFilter {
+  // Search and pagination
   search?: string;
-  category?: string;
-  agency_name?: string;
-  agency_subdivision?: string;
-  funding_min?: number;
-  funding_max?: number;
-  post_date_start?: Date;
-  post_date_end?: Date;
-  close_date_start?: Date;
-  close_date_end?: Date;
-  eligible_applicant_types?: string[];
-  cost_sharing?: boolean;
-  activity_categories?: string[];
-  grant_type?: string;  // Renamed from funding_type
-  status?: string;
-  keywords?: string[];
   page?: number;
   limit?: number;
-  user_id?: string;  // Added to filter out grants the user has already interacted with
-  exclude_interaction_types?: ('saved' | 'applied' | 'ignored')[];  // Specify which interaction types to exclude
+  
+  // Status filters
+  status?: string | string[];
+  
+  // Organization filters
+  funding_organization_name?: string | string[];
+  
+  // Financial filters
+  funding_min?: number;
+  funding_max?: number;
+  
+  // Date filters
+  posted_date_start?: Date | string;
+  posted_date_end?: Date | string;
+  deadline_start?: Date | string;
+  deadline_end?: Date | string;
+  
+  // Type filters
+  grant_type?: string | string[];
+  funding_instrument?: string | string[];
+  
+  // Geographic filters
+  geographic_scope?: string | string[];
+  countries?: string | string[];
+  states?: string | string[];
+  
+  // Other filters
+  cost_sharing_required?: boolean;
+  cfda_numbers?: string | string[];
+  opportunity_number?: string;
+  
+  // Sorting
+  sort_by?: 'posted_date' | 'application_deadline' | 'funding_amount_max' | 'created_at' | 'title';
+  sort_direction?: 'asc' | 'desc';
+  
+  // User-specific filters
+  user_id?: string;
+  exclude_interaction_types?: ('saved' | 'applied' | 'ignored')[];
+  exclude_id?: string; // For similar grants
+}
+
+// Simplified Grant Response for API responses
+export interface GrantResponse {
+  id: string;
+  title: string;
+  funding_organization_name: string;
+  status: string;
+  application_deadline?: string | null;
+  funding_amount_min?: number | null;
+  funding_amount_max?: number | null;
+  summary?: string | null;
+  application_url?: string | null;
+  geographic_scope?: string | null;
+  created_at?: string;
+}
+
+// Grant statistics
+export interface GrantStats {
+  total_grants: number;
+  active_grants: number;
+  forecasted_grants: number;
+  urgent_deadlines: number;
+  grants_with_amounts: number;
+  avg_funding_amount: number;
 }

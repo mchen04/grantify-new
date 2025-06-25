@@ -73,10 +73,10 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filter }) => {
         )}
 
 
-        {/* Agencies */}
-        {filter.agencies && filter.agencies.length > 0 && (
+        {/* Organizations */}
+        {filter.organizations && filter.organizations.length > 0 && (
           <span className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full">
-            {filter.agencies.join(', ')}
+            {filter.organizations.join(', ')}
           </span>
         )}
         
@@ -112,17 +112,18 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filter }) => {
         )}
 
         {/* Requirements */}
-        {filter.costSharing !== null && filter.costSharing !== undefined && (
+        {filter.costSharingRequired !== null && filter.costSharingRequired !== undefined && (
           <span className="bg-red-100 text-red-800 text-xs font-medium px-3 py-1 rounded-full">
-            Cost Sharing: {filter.costSharing ? 'Required' : 'Not Required'}
+            Cost Sharing: {filter.costSharingRequired ? 'Required' : 'Not Required'}
           </span>
         )}
 
-        {filter.clinicalTrialAllowed !== null && filter.clinicalTrialAllowed !== undefined && (
+        {/* Note: clinicalTrialAllowed property doesn't exist in GrantFilter type */}
+        {/* {filter.clinicalTrialAllowed !== null && filter.clinicalTrialAllowed !== undefined && (
           <span className="bg-pink-100 text-pink-800 text-xs font-medium px-3 py-1 rounded-full">
             Clinical Trials: {filter.clinicalTrialAllowed ? 'Allowed' : 'Not Allowed'}
           </span>
-        )}
+        )} */}
 
         {/* Applicant Types */}
         {filter.eligible_applicant_types && filter.eligible_applicant_types.length > 0 && (

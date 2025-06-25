@@ -470,3 +470,56 @@ html {
   background-repeat: no-repeat;
   animation: skeleton 1.2s ease-in-out infinite;
 }
+
+/* Grant card exit animation */
+@keyframes grant-card-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.grant-card-exit {
+  animation: grant-card-exit 0.15s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Instant hide for grants */
+.grant-hidden {
+  display: none !important;
+}
+
+/* Toast animations */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}

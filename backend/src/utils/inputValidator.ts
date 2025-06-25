@@ -1,132 +1,153 @@
-/**
- * Input validation utilities for type safety and security
- * 
- * This module provides validation without modifying the input data.
- * Supabase uses parameterized queries, so we don't need to sanitize SQL.
- * Instead, we validate data types and formats.
- */
-
 import validator from 'validator';
 
-/**
- * Validate string input
- * @param input - Raw input
- * @param options - Validation options
- * @returns Validated string or throws error
- */
-export function validateString(
-  input: any, 
-  options: {
-    maxLength?: number;
-    minLength?: number;
-    pattern?: RegExp;
-    required?: boolean;
-  } = {}
-): string {
-  if (input === null || input === undefined) {
-    if (options.required) {
-      throw new Error('String value is required');
-    }
-    return '';
-  }
-  
-  if (typeof input !== 'string') {
-    throw new Error('Value must be a string');
-  }
-  
-  if (options.minLength && input.length < options.minLength) {
-    throw new Error(`String must be at least ${options.minLength} characters`);
-  }
-  
-  if (options.maxLength && input.length > options.maxLength) {
-    throw new Error(`String must not exceed ${options.maxLength} characters`);
-  }
-  
-  if (options.pattern && !options.pattern.test(input)) {
-    throw new Error('String format is invalid');
-  }
-  
-  return input;
+// Type definitions for validation options
+interface StringOptions {
+  minLength?: number;
+  maxLength?: number;
+  required?: boolean;
+  regex?: RegExp;
+}
+
+interface NumberOptions {
+  min?: number;
+  max?: number;
+  integer?: boolean;
+  required?: boolean;
+}
+
+interface DateOptions {
+  minDate?: Date;
+  maxDate?: Date;
+  required?: boolean;
 }
 
 /**
- * Validate numeric input
- * @param input - Raw input
+ * Sanitize and validate string input
+ * @param input - Raw input string
  * @param options - Validation options
- * @returns Validated number or throws error
+ * @returns Sanitized string or throws error
  */
-export function validateNumber(
-  input: any,
-  options: {
-    min?: number;
-    max?: number;
-    integer?: boolean;
-    required?: boolean;
-  } = {}
-): number | undefined {
-  if (input === null || input === undefined) {
+export function validateString(input: any, options: StringOptions = {}): string | undefined {
+  if (!input) {
     if (options.required) {
-      throw new Error('Number value is required');
+      throw new Error('Field is required');
     }
     return undefined;
   }
   
-  const num = Number(input);
-  if (isNaN(num) || !isFinite(num)) {
-    throw new Error('Value must be a valid number');
+  // Convert to string and trim
+  const str = String(input).trim();
+  
+  if (str.length === 0) {
+    if (options.required) {
+      throw new Error('Field cannot be empty');
+    }
+    return undefined;
   }
   
-  if (options.integer && !Number.isInteger(num)) {
-    throw new Error('Value must be an integer');
+  // Check length constraints
+  if (options.minLength && str.length < options.minLength) {
+    throw new Error(`Must be at least ${options.minLength} characters`);
   }
   
-  if (options.min !== undefined && num < options.min) {
-    throw new Error(`Number must be at least ${options.min}`);
+  if (options.maxLength && str.length > options.maxLength) {
+    throw new Error(`Must not exceed ${options.maxLength} characters`);
   }
   
-  if (options.max !== undefined && num > options.max) {
-    throw new Error(`Number must not exceed ${options.max}`);
+  // Check regex pattern if provided
+  if (options.regex && !options.regex.test(str)) {
+    throw new Error('Invalid format');
   }
   
-  return num;
+  // Escape HTML to prevent XSS
+  return validator.escape(str);
+}
+
+/**
+ * Validate email
+ * @param email - Email string
+ * @param required - Whether email is required
+ * @returns Normalized email or throws error
+ */
+export function validateEmail(email: any, required = false): string | undefined {
+  if (!email) {
+    if (required) {
+      throw new Error('Email is required');
+    }
+    return undefined;
+  }
+  
+  const normalized = validator.normalizeEmail(String(email));
+  if (!normalized || !validator.isEmail(normalized)) {
+    throw new Error('Invalid email format');
+  }
+  
+  return normalized;
 }
 
 /**
  * Validate UUID
- * @param input - Raw input
- * @param required - Whether the field is required
+ * @param uuid - UUID string
+ * @param required - Whether UUID is required
  * @returns Validated UUID or throws error
  */
-export function validateUUID(input: any, required = false): string | undefined {
-  if (!input) {
+export function validateUUID(uuid: any, required = false): string | undefined {
+  if (!uuid) {
     if (required) {
       throw new Error('UUID is required');
     }
     return undefined;
   }
   
-  const uuid = String(input);
-  if (!validator.isUUID(uuid)) {
+  const uuidStr = String(uuid).trim();
+  if (!validator.isUUID(uuidStr)) {
     throw new Error('Invalid UUID format');
   }
   
-  return uuid;
+  return uuidStr;
+}
+
+/**
+ * Validate number
+ * @param input - Raw input
+ * @param options - Validation options
+ * @returns Validated number or throws error
+ */
+export function validateNumber(input: any, options: NumberOptions = {}): number | undefined {
+  if (input === null || input === undefined || input === '') {
+    if (options.required) {
+      throw new Error('Number is required');
+    }
+    return undefined;
+  }
+  
+  const num = Number(input);
+  if (isNaN(num)) {
+    throw new Error('Must be a valid number');
+  }
+  
+  if (options.integer && !Number.isInteger(num)) {
+    throw new Error('Must be an integer');
+  }
+  
+  if (options.min !== undefined && num < options.min) {
+    throw new Error(`Must be at least ${options.min}`);
+  }
+  
+  if (options.max !== undefined && num > options.max) {
+    throw new Error(`Must not exceed ${options.max}`);
+  }
+  
+  return num;
 }
 
 /**
  * Validate date
  * @param input - Raw input
  * @param options - Validation options
- * @returns Validated ISO date string or throws error
+ * @returns ISO date string or throws error
  */
-export function validateDate(
-  input: any,
-  options: {
-    minDate?: Date;
-    maxDate?: Date;
-    required?: boolean;
-  } = {}
-): string | undefined {
+export function validateDate(input: any, options: DateOptions = {}): string | undefined {
   if (!input) {
     if (options.required) {
       throw new Error('Date is required');
@@ -213,25 +234,25 @@ export function validateBoolean(input: any, required = false): boolean | undefin
     return undefined;
   }
   
-  if (typeof input === 'boolean') {
-    return input;
+  // Handle string representations
+  if (typeof input === 'string') {
+    const lower = input.toLowerCase();
+    if (lower === 'true' || lower === '1' || lower === 'yes') {
+      return true;
+    }
+    if (lower === 'false' || lower === '0' || lower === 'no') {
+      return false;
+    }
+    throw new Error('Invalid boolean value');
   }
   
-  if (input === 'true' || input === '1') {
-    return true;
-  }
-  
-  if (input === 'false' || input === '0') {
-    return false;
-  }
-  
-  throw new Error('Value must be a boolean');
+  return Boolean(input);
 }
 
 /**
- * Validate grant filters
- * @param filters - Raw filters object
- * @returns Validated filters
+ * Validate grant filters with the new schema
+ * @param filters - Raw filter object
+ * @returns Validated filters object
  */
 export function validateGrantFilters(filters: any): any {
   if (!filters || typeof filters !== 'object') {
@@ -245,17 +266,14 @@ export function validateGrantFilters(filters: any): any {
     validated.search = validateString(filters.search, { maxLength: 200 });
   }
   
-  // Category and agency filters
-  if (filters.category !== undefined) {
-    validated.category = validateString(filters.category, { maxLength: 100 });
+  // Organization filter (new field name)
+  if (filters.funding_organization_name !== undefined) {
+    validated.funding_organization_name = validateString(filters.funding_organization_name, { maxLength: 255 });
   }
   
-  if (filters.agency_name !== undefined) {
-    validated.agency_name = validateString(filters.agency_name, { maxLength: 200 });
-  }
-  
-  if (filters.agency_subdivision !== undefined) {
-    validated.agency_subdivision = validateString(filters.agency_subdivision, { maxLength: 200 });
+  // Legacy support for agency_name (map to funding_organization_name)
+  if (filters.agency_name !== undefined && filters.funding_organization_name === undefined) {
+    validated.funding_organization_name = validateString(filters.agency_name, { maxLength: 255 });
   }
   
   // Funding range
@@ -264,9 +282,7 @@ export function validateGrantFilters(filters: any): any {
   }
   
   if (filters.funding_max !== undefined) {
-    // Handle the case where frontend sends Number.MAX_SAFE_INTEGER as "no upper limit"
     const fundingMax = validateNumber(filters.funding_max, { min: 0, max: Number.MAX_SAFE_INTEGER });
-    // If it's MAX_SAFE_INTEGER, treat it as "no limit" and don't include in query
     if (fundingMax !== undefined && fundingMax < Number.MAX_SAFE_INTEGER) {
       validated.funding_max = fundingMax;
     }
@@ -279,58 +295,135 @@ export function validateGrantFilters(filters: any): any {
     }
   }
   
-  // Arrays with limited size
-  if (filters.activity_categories !== undefined) {
-    validated.activity_categories = validateArray(
-      filters.activity_categories,
-      (item) => validateString(item, { maxLength: 100 }),
-      { maxLength: 20 }
-    );
+  // Date filters
+  if (filters.posted_date_start !== undefined) {
+    validated.posted_date_start = validateDate(filters.posted_date_start);
   }
   
-  if (filters.eligible_applicant_types !== undefined) {
-    validated.eligible_applicant_types = validateArray(
-      filters.eligible_applicant_types,
-      (item) => validateString(item, { maxLength: 100 }),
-      { maxLength: 20 }
-    );
+  if (filters.posted_date_end !== undefined) {
+    validated.posted_date_end = validateDate(filters.posted_date_end);
   }
   
-  if (filters.keywords !== undefined) {
-    validated.keywords = validateArray(
-      filters.keywords,
-      (item) => validateString(item, { maxLength: 50 }),
-      { maxLength: 10 }
-    );
+  if (filters.deadline_start !== undefined) {
+    validated.deadline_start = validateDate(filters.deadline_start);
   }
   
-  // Grant type and status
+  if (filters.deadline_end !== undefined) {
+    validated.deadline_end = validateDate(filters.deadline_end);
+  }
+  
+  // Status filter
+  if (filters.status !== undefined) {
+    if (Array.isArray(filters.status)) {
+      validated.status = validateArray(
+        filters.status,
+        (item) => validateString(item, { maxLength: 50 }),
+        { maxLength: 10 }
+      );
+    } else {
+      validated.status = validateString(filters.status, { maxLength: 50 });
+    }
+  }
+  
+  // Grant type
   if (filters.grant_type !== undefined) {
-    validated.grant_type = validateString(filters.grant_type, { maxLength: 50 });
+    if (Array.isArray(filters.grant_type)) {
+      validated.grant_type = validateArray(
+        filters.grant_type,
+        (item) => validateString(item, { maxLength: 100 }),
+        { maxLength: 10 }
+      );
+    } else {
+      validated.grant_type = validateString(filters.grant_type, { maxLength: 100 });
+    }
   }
   
-  // Grant types array (for frontend compatibility)
-  if (filters.grant_types !== undefined) {
-    validated.grant_types = validateArray(
-      filters.grant_types,
-      (item) => validateString(item, { maxLength: 100 }),
-      { maxLength: 10 }
-    );
+  // Funding instrument
+  if (filters.funding_instrument !== undefined) {
+    if (Array.isArray(filters.funding_instrument)) {
+      validated.funding_instrument = validateArray(
+        filters.funding_instrument,
+        (item) => validateString(item, { maxLength: 100 }),
+        { maxLength: 10 }
+      );
+    } else {
+      validated.funding_instrument = validateString(filters.funding_instrument, { maxLength: 100 });
+    }
   }
   
-  // Agencies array
-  if (filters.agencies !== undefined) {
-    validated.agencies = validateArray(
-      filters.agencies,
-      (item) => validateString(item, { maxLength: 200 }),
-      { maxLength: 5 }
-    );
+  // Geographic filters
+  if (filters.geographic_scope !== undefined) {
+    if (Array.isArray(filters.geographic_scope)) {
+      validated.geographic_scope = validateArray(
+        filters.geographic_scope,
+        (item) => validateString(item, { maxLength: 50 }),
+        { maxLength: 10 }
+      );
+    } else {
+      validated.geographic_scope = validateString(filters.geographic_scope, { maxLength: 50 });
+    }
   }
   
-  // Status filter removed - no longer filtering by status to show all grants
-  // if (filters.status !== undefined) {
-  //   validated.status = validateString(filters.status, { maxLength: 50 });
-  // }
+  if (filters.countries !== undefined) {
+    if (Array.isArray(filters.countries)) {
+      validated.countries = validateArray(
+        filters.countries,
+        (item) => validateString(item, { maxLength: 10 }),
+        { maxLength: 50 }
+      );
+    } else {
+      validated.countries = validateString(filters.countries, { maxLength: 10 });
+    }
+  }
+  
+  if (filters.states !== undefined) {
+    if (Array.isArray(filters.states)) {
+      validated.states = validateArray(
+        filters.states,
+        (item) => validateString(item, { maxLength: 10 }),
+        { maxLength: 50 }
+      );
+    } else {
+      validated.states = validateString(filters.states, { maxLength: 10 });
+    }
+  }
+  
+  // Other filters
+  if (filters.cost_sharing_required !== undefined) {
+    validated.cost_sharing_required = validateBoolean(filters.cost_sharing_required);
+  }
+  
+  if (filters.cfda_numbers !== undefined) {
+    if (Array.isArray(filters.cfda_numbers)) {
+      validated.cfda_numbers = validateArray(
+        filters.cfda_numbers,
+        (item) => validateString(item, { maxLength: 20 }),
+        { maxLength: 10 }
+      );
+    } else {
+      validated.cfda_numbers = validateString(filters.cfda_numbers, { maxLength: 20 });
+    }
+  }
+  
+  if (filters.opportunity_number !== undefined) {
+    validated.opportunity_number = validateString(filters.opportunity_number, { maxLength: 100 });
+  }
+  
+  // Sorting and pagination
+  if (filters.sort_by !== undefined) {
+    const allowedSortFields = ['posted_date', 'application_deadline', 'funding_amount_max', 'created_at', 'title'];
+    const sortBy = validateString(filters.sort_by, { maxLength: 50 });
+    if (sortBy && allowedSortFields.includes(sortBy)) {
+      validated.sort_by = sortBy;
+    }
+  }
+  
+  if (filters.sort_direction !== undefined) {
+    const direction = validateString(filters.sort_direction, { maxLength: 4 });
+    if (direction === 'asc' || direction === 'desc') {
+      validated.sort_direction = direction;
+    }
+  }
   
   // Pagination
   if (filters.page !== undefined) {
@@ -341,108 +434,94 @@ export function validateGrantFilters(filters: any): any {
     validated.limit = validateNumber(filters.limit, { min: 1, max: 100, integer: true });
   }
   
-  // Date filters
-  if (filters.deadline_min !== undefined) {
-    validated.deadline_min = validateDate(filters.deadline_min);
-  }
-  
-  if (filters.deadline_max !== undefined) {
-    validated.deadline_max = validateDate(filters.deadline_max);
-  }
-  
-  // Validate deadline range consistency
-  if (validated.deadline_min && validated.deadline_max) {
-    const minDate = new Date(validated.deadline_min);
-    const maxDate = new Date(validated.deadline_max);
-    if (minDate > maxDate) {
-      throw new Error('Deadline minimum cannot be later than deadline maximum');
-    }
-  }
-  
-  // Boolean filters
-  if (filters.deadline_null !== undefined) {
-    validated.deadline_null = validateBoolean(filters.deadline_null);
-  }
-  
-  if (filters.include_no_deadline !== undefined) {
-    validated.include_no_deadline = validateBoolean(filters.include_no_deadline);
-  }
-  
-  if (filters.funding_null !== undefined) {
-    validated.funding_null = validateBoolean(filters.funding_null);
-  }
-  
-  if (filters.include_no_funding !== undefined) {
-    validated.include_no_funding = validateBoolean(filters.include_no_funding);
-  }
-  
-  // UUIDs
-  if (filters.exclude_id !== undefined) {
-    validated.exclude_id = validateUUID(filters.exclude_id);
-  }
-  
+  // User interaction filters
   if (filters.user_id !== undefined) {
     validated.user_id = validateUUID(filters.user_id);
   }
   
-  // Interaction types enum
   if (filters.exclude_interaction_types !== undefined) {
-    const validTypes = ['saved', 'applied', 'ignored'];
     validated.exclude_interaction_types = validateArray(
       filters.exclude_interaction_types,
       (item) => {
+        const validTypes = ['saved', 'applied', 'ignored'];
         const type = validateString(item, { maxLength: 20 });
-        if (!validTypes.includes(type)) {
-          throw new Error(`Invalid interaction type: ${type}`);
+        if (type && validTypes.includes(type)) {
+          return type;
         }
-        return type;
+        throw new Error(`Invalid interaction type: ${type}`);
       },
       { maxLength: 3 }
     );
   }
   
-  // Data sources filter
-  if (filters.data_sources !== undefined) {
-    validated.data_sources = validateArray(
-      filters.data_sources,
-      (item) => validateString(item, { maxLength: 50 }),
-      { maxLength: 10 }
-    );
-  }
-  
-  // Show overdue grants filter
-  if (filters.show_overdue !== undefined) {
-    validated.show_overdue = validateBoolean(filters.show_overdue);
-  }
-  
-  // Boolean filters for grant characteristics
-  if (filters.cost_sharing !== undefined) {
-    validated.cost_sharing = validateBoolean(filters.cost_sharing);
-  }
-  
-  if (filters.clinical_trial_allowed !== undefined) {
-    validated.clinical_trial_allowed = validateBoolean(filters.clinical_trial_allowed);
-  }
-  
-  // Sort parameters
-  if (filters.sort_by !== undefined) {
-    const validSortOptions = [
-      'relevance',
-      'recent',
-      'deadline',
-      'deadline_latest',
-      'amount',
-      'amount_asc',
-      'title_asc',
-      'title_desc'
-    ];
-    const sortBy = validateString(filters.sort_by, { maxLength: 20 });
-    if (!validSortOptions.includes(sortBy)) {
-      throw new Error(`Invalid sort_by option: ${sortBy}`);
-    }
-    validated.sort_by = sortBy;
+  if (filters.exclude_id !== undefined) {
+    validated.exclude_id = validateUUID(filters.exclude_id);
   }
   
   return validated;
 }
 
+/**
+ * Validate pagination parameters
+ * @param page - Page number
+ * @param limit - Items per page
+ * @returns Validated pagination object
+ */
+export function validatePagination(page: any, limit: any): { page: number; limit: number; offset: number } {
+  const validatedPage = validateNumber(page, { min: 1, max: 1000, integer: true }) || 1;
+  const validatedLimit = validateNumber(limit, { min: 1, max: 100, integer: true }) || 20;
+  const offset = (validatedPage - 1) * validatedLimit;
+  
+  return {
+    page: validatedPage,
+    limit: validatedLimit,
+    offset
+  };
+}
+
+/**
+ * Validate user preferences
+ * @param preferences - Raw preferences object
+ * @returns Validated preferences
+ */
+export function validateUserPreferences(preferences: any): any {
+  if (!preferences || typeof preferences !== 'object') {
+    return {};
+  }
+  
+  const validated: any = {};
+  
+  if (preferences.grant_categories !== undefined) {
+    validated.grant_categories = validateArray(
+      preferences.grant_categories,
+      (item) => validateString(item, { maxLength: 100 }),
+      { maxLength: 20 }
+    );
+  }
+  
+  if (preferences.agencies !== undefined) {
+    validated.agencies = validateArray(
+      preferences.agencies,
+      (item) => validateString(item, { maxLength: 200 }),
+      { maxLength: 10 }
+    );
+  }
+  
+  if (preferences.funding_min !== undefined) {
+    validated.funding_min = validateNumber(preferences.funding_min, { min: 0 });
+  }
+  
+  if (preferences.funding_max !== undefined) {
+    validated.funding_max = validateNumber(preferences.funding_max, { min: 0 });
+  }
+  
+  if (preferences.deadline_range !== undefined) {
+    validated.deadline_range = validateNumber(preferences.deadline_range, { min: 1, max: 365, integer: true });
+  }
+  
+  if (preferences.project_description_query !== undefined) {
+    validated.project_description_query = validateString(preferences.project_description_query, { maxLength: 2000 });
+  }
+  
+  return validated;
+}

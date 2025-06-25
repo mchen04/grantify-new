@@ -59,22 +59,22 @@ class RecommendationService {
       if (includeFilters) {
         // Apply funding range filter
         if (preferences.funding_min !== null && preferences.funding_min !== undefined) {
-          query = query.gte('award_ceiling', preferences.funding_min);
+          query = query.gte('funding_amount_max', preferences.funding_min);
         }
         if (preferences.funding_max !== null && preferences.funding_max !== undefined) {
-          query = query.lte('award_floor', preferences.funding_max);
+          query = query.lte('funding_amount_min', preferences.funding_max);
         }
 
         // Apply agency filter
         if (preferences.agencies && preferences.agencies.length > 0) {
-          query = query.in('agency_name', preferences.agencies);
+          query = query.in('funding_organization_name', preferences.agencies);
         }
 
         // Apply deadline filter based on deadline_range
         if (preferences.deadline_range && preferences.deadline_range !== '0') {
           const deadlineDate = this.calculateDeadlineDate(preferences.deadline_range);
           if (deadlineDate) {
-            query = query.gte('close_date', deadlineDate.toISOString());
+            query = query.gte('application_deadline', deadlineDate.toISOString());
           }
         }
       }
@@ -133,13 +133,13 @@ class RecommendationService {
 
     // Apply filters
     if (preferences.funding_min !== null && preferences.funding_min !== undefined) {
-      query = query.gte('award_ceiling', preferences.funding_min);
+      query = query.gte('funding_amount_max', preferences.funding_min);
     }
     if (preferences.funding_max !== null && preferences.funding_max !== undefined) {
-      query = query.lte('award_floor', preferences.funding_max);
+      query = query.lte('funding_amount_min', preferences.funding_max);
     }
     if (preferences.agencies && preferences.agencies.length > 0) {
-      query = query.in('agency_name', preferences.agencies);
+      query = query.in('funding_organization_name', preferences.agencies);
     }
     if (preferences.topics && preferences.topics.length > 0) {
       query = query.in('category', preferences.topics);
@@ -149,13 +149,13 @@ class RecommendationService {
     if (preferences.deadline_range && preferences.deadline_range !== '0') {
       const deadlineDate = this.calculateDeadlineDate(preferences.deadline_range);
       if (deadlineDate) {
-        query = query.gte('close_date', deadlineDate.toISOString());
+        query = query.gte('application_deadline', deadlineDate.toISOString());
       }
     }
 
     // Order by post date and paginate
     query = query
-      .order('post_date', { ascending: false })
+      .order('posted_date', { ascending: false })
       .range(offset, offset + limit - 1);
 
     const { data: grants, error, count } = await query;
@@ -198,8 +198,8 @@ class RecommendationService {
       reasons.push('Good match for your project description');
     }
 
-    if (preferences.agencies?.includes(grant.agency_name)) {
-      reasons.push(`From preferred agency: ${grant.agency_name}`);
+    if (preferences.agencies?.includes(grant.funding_organization_name)) {
+      reasons.push(`From preferred agency: ${grant.funding_organization_name}`);
     }
 
     if (preferences.topics?.includes(grant.category)) {
@@ -207,10 +207,10 @@ class RecommendationService {
     }
 
     const fundingInRange = 
-      (preferences.funding_min === undefined || grant.award_ceiling >= preferences.funding_min) &&
-      (preferences.funding_max === undefined || grant.award_floor <= preferences.funding_max);
+      (preferences.funding_min === undefined || grant.funding_amount_max >= preferences.funding_min) &&
+      (preferences.funding_max === undefined || grant.funding_amount_min <= preferences.funding_max);
     
-    if (fundingInRange && (grant.award_floor || grant.award_ceiling)) {
+    if (fundingInRange && (grant.funding_amount_min || grant.funding_amount_max)) {
       reasons.push('Funding amount within your range');
     }
 

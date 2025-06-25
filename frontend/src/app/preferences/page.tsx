@@ -86,15 +86,9 @@ export default function Preferences() {
         setLoading(true);
         setMessage(null);
 
-        const { data, error } = await supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
+        const response = await usersApi.getUserPreferences(user.id);
+        const data = response.data;
+        const error = response.error;
 
         if (data) {
           // Load simplified preferences

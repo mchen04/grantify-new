@@ -5,7 +5,6 @@ import 'dotenv/config';
 import grantsRouter from './routes/grants.route';
 import usersRouter from './routes/users.route';
 import recommendationsRouter from './routes/recommendations.route';
-import scraperRouter from './routes/scraper.route';
 import analyticsRouter from './routes/analytics.route';
 import maintenanceRouter from './routes/maintenance';
 import logger, { logApiRequest } from './utils/logger';
@@ -19,6 +18,7 @@ import { performanceMiddleware, healthCheckEndpoint, startMemoryMonitoring } fro
 import config from './config/config';
 import path from 'path';
 import fs from 'fs';
+import apiSyncRouter, { apiScheduler } from './routes/api-sync.route';
 
 // Create Express server
 const app = express();
@@ -60,15 +60,22 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 });
 
 // Graceful shutdown handling
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received - Starting graceful shutdown');
-  process.exit(0);
-});
+const gracefulShutdown = async () => {
+  logger.info('Starting graceful shutdown...');
+  
+  // Stop API scheduler (disabled)
+  // if (apiScheduler) {
+  //   apiScheduler.stop();
+  // }
+  
+  // Give time for cleanup
+  setTimeout(() => {
+    process.exit(0);
+  }, 5000);
+};
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received - Starting graceful shutdown');
-  process.exit(0);
-});
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 // Middleware
 // Apply CORS with production-ready configuration
@@ -123,9 +130,9 @@ app.get('/api/csrf-token', authMiddleware, generateCSRFToken);
 app.use('/api/grants', grantsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/recommendations', recommendationsRouter);
-app.use('/api/scraper', scraperRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/sync', apiSyncRouter);
 
 // Admin routes with stricter rate limiting and authentication
 const adminRouter = express.Router();
@@ -160,7 +167,7 @@ app.use('*', notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
+app.listen(port, async () => {
   logger.info(`Server running on port ${port}`, {
     environment: process.env.NODE_ENV || 'development',
     port,
@@ -169,6 +176,14 @@ app.listen(port, () => {
   
   // Start memory monitoring
   startMemoryMonitoring();
+  
+  // Initialize API scheduler (disabled - not needed for core functionality)
+  // try {
+  //   await apiScheduler.initialize();
+  //   logger.info('API Scheduler initialized successfully');
+  // } catch (error) {
+  //   logger.error('Failed to initialize API Scheduler', error);
+  // }
 });
 
 export default app;

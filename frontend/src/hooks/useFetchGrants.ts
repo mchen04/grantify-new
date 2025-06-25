@@ -50,13 +50,11 @@ export function useFetchGrants({
       // Convert filter to API-compatible format
       const apiFilters: Record<string, any> = {};
       
-      // Add user ID and exclude interacted grants flag if user is logged in
+      // Add user ID if user is logged in
       if (user) {
         apiFilters.user_id = user.id;
-        
-        if (excludeInteractedGrants) {
-          apiFilters.exclude_interacted_grants = true;
-        }
+        // Note: excludeInteractedGrants parameter is now ignored - users should see all grants
+        // This allows users to interact with grants they've previously interacted with
       }
       
       if (filter) {
@@ -66,8 +64,8 @@ export function useFetchGrants({
         apiFilters.page = filter.page;
         
         // Data sources filter
-        if (filter.data_sources && filter.data_sources.length > 0) {
-          apiFilters.data_sources = filter.data_sources.join(',');
+        if (filter.data_source_ids && filter.data_source_ids.length > 0) {
+          apiFilters.data_sources = filter.data_source_ids.join(',');
         } else if (filter.sources && filter.sources.length > 0) {
           // Legacy support for 'sources' field
           apiFilters.data_sources = filter.sources.join(',');
@@ -111,13 +109,10 @@ export function useFetchGrants({
         }
         
         // Boolean filters - send when explicitly set to true or false, not when null/undefined
-        if (filter.costSharing !== undefined && filter.costSharing !== null) {
-          apiFilters.cost_sharing = filter.costSharing;
+        if (filter.costSharingRequired !== undefined && filter.costSharingRequired !== null) {
+          apiFilters.cost_sharing = filter.costSharingRequired;
         }
         
-        if (filter.clinicalTrialAllowed !== undefined && filter.clinicalTrialAllowed !== null) {
-          apiFilters.clinical_trial_allowed = filter.clinicalTrialAllowed;
-        }
         
         // Show overdue grants filter
         if (filter.showOverdue !== undefined) {

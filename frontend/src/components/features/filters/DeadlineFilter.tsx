@@ -145,12 +145,12 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
 
   return (
     <div>
-      <label className="form-label">
-        Deadline Range: {formatDeadlineText(localDeadlineMinDays)} - {formatDeadlineText(localDeadlineMaxDays)}
-      </label>
+      <div className="text-xs text-gray-600 mb-1">
+        {formatDeadlineText(localDeadlineMinDays)} - {formatDeadlineText(localDeadlineMaxDays)}
+      </div>
       
       {/* Quick deadline range selection */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-1 mb-2">
         {deadlinePresets.map((preset) => (
           <button
             key={preset.label}
@@ -178,7 +178,7 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
                 });
               }
             }}
-            className={`px-2 py-1 text-xs rounded-full transition-colors ${
+            className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
               localDeadlineMinDays === preset.min && localDeadlineMaxDays === preset.max
                 ? 'bg-primary-100 text-primary-800 font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -191,10 +191,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
       </div>
       
       {/* Slider */}
-      <div className={`mt-2 px-2 ${onlyNoDeadline ? 'opacity-50' : ''}`}>
+      <div className={`${onlyNoDeadline ? 'opacity-50' : ''}`}>
         <div
           ref={rangeRef}
-          className="relative w-full h-2 bg-gray-200 rounded-lg"
+          className="relative w-full h-1.5 bg-gray-200 rounded-lg"
         >
           {/* Selected range highlight */}
           <div
@@ -207,7 +207,7 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           
           {/* Minimum handle */}
           <div
-            className={`absolute w-4 h-4 bg-white border-2 border-primary-500 rounded-full -mt-1 -ml-2 cursor-pointer shadow-md ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
+            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
             style={{ left: `${minPercentage}%` }}
             onMouseDown={() => !onlyNoDeadline && setIsDragging('min')}
             onTouchStart={() => !onlyNoDeadline && setIsDragging('min')}
@@ -221,7 +221,7 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           
           {/* Maximum handle */}
           <div
-            className={`absolute w-4 h-4 bg-white border-2 border-primary-500 rounded-full -mt-1 -ml-2 cursor-pointer shadow-md ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
+            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
             style={{ left: `${maxPercentage}%` }}
             onMouseDown={() => !onlyNoDeadline && setIsDragging('max')}
             onTouchStart={() => !onlyNoDeadline && setIsDragging('max')}
@@ -234,14 +234,14 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           />
         </div>
         
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
           <span>90d overdue</span>
           <span>1 year</span>
         </div>
       </div>
       
       {/* Checkboxes */}
-      <div className="mt-3 space-y-2">
+      <div className="mt-2 space-y-1">
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -249,10 +249,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
             checked={includeNoDeadline}
             onChange={(e) => onChange({ includeNoDeadline: e.target.checked })}
             disabled={onlyNoDeadline}
-            className="form-checkbox"
+            className="form-checkbox h-3 w-3"
           />
-          <label htmlFor="include-no-deadline" className="ml-2 block text-sm text-gray-700">
-            Include grants with unspecified deadline
+          <label htmlFor="include-no-deadline" className="ml-1.5 text-xs text-gray-700">
+            Include unspecified
           </label>
         </div>
         
@@ -262,10 +262,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
             id="only-no-deadline"
             checked={onlyNoDeadline}
             onChange={(e) => onChange({ onlyNoDeadline: e.target.checked })}
-            className="form-checkbox"
+            className="form-checkbox h-3 w-3"
           />
-          <label htmlFor="only-no-deadline" className="ml-2 block text-sm text-gray-700">
-            Only show grants with unspecified deadline
+          <label htmlFor="only-no-deadline" className="ml-1.5 text-xs text-gray-700">
+            Only unspecified
           </label>
         </div>
       </div>

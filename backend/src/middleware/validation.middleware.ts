@@ -48,7 +48,8 @@ export const userInteractionValidation = [
 export const grantFilterValidation = [
   query('search').optional().isString().withMessage('Search must be a string'),
   query('category').optional().isString().withMessage('Category must be a string'),
-  query('agency_name').optional().isString().withMessage('Agency name must be a string'),
+  query('funding_organization_name').optional().isString().withMessage('Funding organization name must be a string'),
+  query('agency_name').optional().isString().withMessage('Agency name must be a string (deprecated - use funding_organization_name)'),
   query('funding_min').optional().isInt({ min: 0 }).withMessage('Funding minimum must be a positive integer'),
   query('funding_max').optional().isInt({ min: 0 }).withMessage('Funding maximum must be a positive integer'),
   query('funding_min').optional().custom((value, { req }) => {

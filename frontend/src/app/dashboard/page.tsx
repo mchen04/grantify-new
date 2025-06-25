@@ -30,14 +30,6 @@ const Pagination = dynamic(
   }
 );
 
-const CollapsibleFilterPanel = dynamic(
-  () => import('@/components/features/dashboard/CollapsibleFilterPanel'),
-  { 
-    ssr: false,
-    loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg" />
-  }
-);
-import { SelectOption } from '@/types/grant';
 import GoogleAdSense from '@/components/ui/GoogleAdSense';
 import { ADSENSE_CONFIG } from '@/lib/config';
 import { preferenceCookieManager, COOKIE_NAMES } from '@/utils/cookieManager';
@@ -256,10 +248,11 @@ function DashboardContent() {
     onError: (message) => setError(message)
   });
   
-  const [searchTerm, setSearchTerm] = useState('');
   const [showApplyConfirmation, setShowApplyConfirmation] = useState(false);
   const [pendingGrantId, setPendingGrantId] = useState<string | null>(null);
   const [pendingGrantTitle, setPendingGrantTitle] = useState<string>('');
+  
+  // Dashboard sort preference only - no filters
   const [sortBy, setSortBy] = useState<string>(() => {
     // Load saved sort preference if available
     if (typeof window !== 'undefined' && preferenceCookieManager.isAllowed()) {
@@ -270,8 +263,6 @@ function DashboardContent() {
     }
     return 'deadline'; // Default
   });
-  const [filterOnlyNoDeadline, setFilterOnlyNoDeadline] = useState(false);
-  const [filterOnlyNoFunding, setFilterOnlyNoFunding] = useState(false);
 
   // Pagination state for each tab
   const [currentPage, setCurrentPage] = useState({
@@ -283,111 +274,64 @@ function DashboardContent() {
 
   // Number of grants to display per page
   const GRANTS_PER_PAGE = DASHBOARD_GRANTS_PER_PAGE;
-
-  // Sort options for the dashboard
-  const sortOptions: SelectOption[] = [
-    { value: 'deadline', label: 'Deadline (Soonest)' },
-    { value: 'deadline_latest', label: 'Deadline (Latest)' },
-    { value: 'amount', label: 'Funding Amount (Highest)' },
-    { value: 'amount_asc', label: 'Funding Amount (Lowest)' },
-    { value: 'title_asc', label: 'Title (A-Z)' },
-    { value: 'title_desc', label: 'Title (Z-A)' }
-  ];
-
-  // Filter and sort grants based on search term, filter options, and sort option
-  const filterAndSortGrants = useCallback((grants: Grant[]) => {
-    // Apply filters in sequence
-    let filteredGrants = grants;
-
-    // Apply no deadline filter if enabled
-    if (filterOnlyNoDeadline) {
-      filteredGrants = filteredGrants.filter(grant =>
-        grant.close_date === null ||
-        (typeof grant.close_date === 'string' &&
-          (grant.close_date.toLowerCase().includes('open') ||
-           grant.close_date.toLowerCase().includes('continuous') ||
-           grant.close_date.toLowerCase().includes('ongoing')))
-      );
-    } else {
-      // When the filter is off, exclude grants with open-ended deadlines
-      filteredGrants = filteredGrants.filter(grant =>
-        !(typeof grant.close_date === 'string' &&
-          (grant.close_date.toLowerCase().includes('open') ||
-           grant.close_date.toLowerCase().includes('continuous') ||
-           grant.close_date.toLowerCase().includes('ongoing')))
-      );
+  
+  // Sort change handler
+  const handleSortChange = useCallback((newSortBy: string) => {
+    setSortBy(newSortBy);
+    
+    // Save sort preference
+    if (preferenceCookieManager.isAllowed()) {
+      preferenceCookieManager.setPreference(COOKIE_NAMES.DASHBOARD_LAYOUT, {
+        sortBy: newSortBy,
+        lastUpdated: new Date().toISOString()
+      });
     }
+  }, []);
 
-    // Apply no funding filter if enabled
-    if (filterOnlyNoFunding) {
-      filteredGrants = filteredGrants.filter(grant => grant.award_ceiling === null);
-    }
-
-    // Apply search term filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filteredGrants = filteredGrants.filter(grant =>
-        grant.title.toLowerCase().includes(term) ||
-        grant.description_short.toLowerCase().includes(term) ||
-        (grant.data_source || grant.agency_name).toLowerCase().includes(term)
-      );
-    }
-
-    // Finally sort based on sortBy option
-    return [...filteredGrants].sort((a, b) => {
+  // Sort grants based on the sort option - no filtering
+  const sortGrants = useCallback((grants: Grant[]) => {
+    return [...grants].sort((a, b) => {
       switch (sortBy) {
         case 'deadline':
-          // Sort by deadline (soonest first)
-          if (!a.close_date) return 1;
-          if (!b.close_date) return -1;
-          return new Date(a.close_date).getTime() - new Date(b.close_date).getTime();
-
+          if (!a.application_deadline) return 1;
+          if (!b.application_deadline) return -1;
+          return new Date(a.application_deadline).getTime() - new Date(b.application_deadline).getTime();
         case 'deadline_latest':
-          // Sort by deadline (latest first)
-          if (!a.close_date) return 1;
-          if (!b.close_date) return -1;
-          return new Date(b.close_date).getTime() - new Date(a.close_date).getTime();
-
+          if (!a.application_deadline) return 1;
+          if (!b.application_deadline) return -1;
+          return new Date(b.application_deadline).getTime() - new Date(a.application_deadline).getTime();
         case 'amount':
-          // Sort by funding amount (highest first)
-          if (a.award_ceiling === null) return 1;
-          if (b.award_ceiling === null) return -1;
-          return b.award_ceiling - a.award_ceiling;
-
+          if (a.funding_amount_max === null) return 1;
+          if (b.funding_amount_max === null) return -1;
+          return b.funding_amount_max - a.funding_amount_max;
         case 'amount_asc':
-          // Sort by funding amount (lowest first)
-          if (a.award_ceiling === null) return 1;
-          if (b.award_ceiling === null) return -1;
-          return a.award_ceiling - b.award_ceiling;
-
+          if (a.funding_amount_max === null) return 1;
+          if (b.funding_amount_max === null) return -1;
+          return a.funding_amount_max - b.funding_amount_max;
         case 'title_asc':
-          // Sort by title (A-Z)
           return a.title.localeCompare(b.title);
-
         case 'title_desc':
-          // Sort by title (Z-A)
           return b.title.localeCompare(a.title);
-
         default:
           return 0;
       }
     });
-  }, [sortBy, filterOnlyNoDeadline, filterOnlyNoFunding, searchTerm]);
+  }, [sortBy]);
 
-  // Memoize filtered and sorted grants to prevent unnecessary recalculations
-  const filteredAndSortedGrants = useMemo(() => {
+  // Memoize sorted grants to prevent unnecessary recalculations
+  const sortedGrants = useMemo(() => {
     // Filter out grants that are being removed to prevent flicker
     const filterRemovingGrants = (grants: Grant[]) => {
       return grants.filter(grant => !removingGrantIds.has(grant.id));
     };
     
     return {
-      recommended: filterAndSortGrants(filterRemovingGrants(recommendedGrants)) as ScoredGrant[],
-      saved: filterAndSortGrants(filterRemovingGrants(savedGrants)),
-      applied: filterAndSortGrants(filterRemovingGrants(appliedGrants)),
-      ignored: filterAndSortGrants(filterRemovingGrants(ignoredGrants))
+      recommended: sortGrants(filterRemovingGrants(recommendedGrants)) as ScoredGrant[],
+      saved: sortGrants(filterRemovingGrants(savedGrants)),
+      applied: sortGrants(filterRemovingGrants(appliedGrants)),
+      ignored: sortGrants(filterRemovingGrants(ignoredGrants))
     };
-  }, [filterAndSortGrants, recommendedGrants, savedGrants, appliedGrants, ignoredGrants, removingGrantIds]);
+  }, [sortGrants, recommendedGrants, savedGrants, appliedGrants, ignoredGrants, removingGrantIds]);
 
   // Handle page change
   const handlePageChange = (tabName: string, newPage: number) => {
@@ -399,17 +343,17 @@ function DashboardContent() {
 
   // Get paginated grants for the current tab
   const getPaginatedGrants = useCallback((grants: Grant[], tabName: string) => {
-    const filtered = filteredAndSortedGrants[tabName as keyof typeof filteredAndSortedGrants];
+    const sorted = sortedGrants[tabName as keyof typeof sortedGrants];
     const startIndex = (currentPage[tabName as keyof typeof currentPage] - 1) * GRANTS_PER_PAGE;
     const endIndex = startIndex + GRANTS_PER_PAGE;
-    return filtered.slice(startIndex, endIndex);
-  }, [filteredAndSortedGrants, currentPage, GRANTS_PER_PAGE]);
+    return sorted.slice(startIndex, endIndex);
+  }, [sortedGrants, currentPage, GRANTS_PER_PAGE]);
 
   // Get total number of pages for a tab
   const getTotalPages = useCallback((grants: Grant[], tabName: string) => {
-    const filtered = filteredAndSortedGrants[tabName as keyof typeof filteredAndSortedGrants];
-    return Math.ceil(filtered.length / GRANTS_PER_PAGE);
-  }, [filteredAndSortedGrants, GRANTS_PER_PAGE]);
+    const sorted = sortedGrants[tabName as keyof typeof sortedGrants];
+    return Math.ceil(sorted.length / GRANTS_PER_PAGE);
+  }, [sortedGrants, GRANTS_PER_PAGE]);
 
   // Memoize displayed grants to prevent unnecessary recalculations
   const displayedGrants = useMemo(() => ({
@@ -421,7 +365,7 @@ function DashboardContent() {
 
   // Calculate adaptive ad count based on content (conservative for 600px tall ads)
   const getAdaptiveAdCount = useCallback(() => {
-    const currentGrants = filteredAndSortedGrants[activeTab as keyof typeof filteredAndSortedGrants];
+    const currentGrants = sortedGrants[activeTab as keyof typeof sortedGrants];
     const grantCount = currentGrants.length;
     
     // No ads if less than 5 grants
@@ -434,7 +378,7 @@ function DashboardContent() {
     if (grantCount >= 5) return 1;  // 1 ad for minimum content threshold
     
     return 0; // No ads for less than 5 grants
-  }, [activeTab, filteredAndSortedGrants]);
+  }, [activeTab, sortedGrants]);
 
   // Memoize total pages calculation to prevent unnecessary recalculations
   const totalPages = useMemo(() => ({
@@ -446,10 +390,18 @@ function DashboardContent() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
+    console.log('[Dashboard] Auth check:', {
+      isLoading,
+      hasUser: !!user,
+      userId: user?.id,
+      hasSession: !!session
+    });
+    
     if (!isLoading && !user) {
+      console.log('[Dashboard] Not authenticated, redirecting to login...');
       router.push('/login');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, session]);
   
   // Update URL when active tab changes
   useEffect(() => {
@@ -534,12 +486,21 @@ function DashboardContent() {
           ignoredGrants.find(g => g.id === grantId);
       
       if (!grant) {
+        console.warn('[Dashboard] Grant not found locally:', grantId);
         return; // Grant not found locally
       }
 
       // Check if this is a toggle (removing an interaction)
       const currentInteraction = interactionsMap[grantId];
       const isRemoving = currentInteraction === action;
+      
+      console.log('[Dashboard] Grant interaction:', {
+        grantId,
+        action,
+        currentInteraction,
+        isRemoving,
+        willAddToRemoving: isRemoving || (currentInteraction && currentInteraction !== action)
+      });
       
       // Immediately add to removingGrantIds to prevent flicker
       if (isRemoving || (currentInteraction && currentInteraction !== action)) {
@@ -552,6 +513,7 @@ function DashboardContent() {
       
       // No need to manually refresh as the InteractionContext will trigger updates
     } catch (error: any) {
+      console.error('[Dashboard] Grant interaction error:', error);
       setError(`Failed to ${action.replace('ed', '')} grant: ${error.message || 'Please try again.'}`);
       // Remove from removingGrantIds if there was an error
       setRemovingGrantIds(prev => {
@@ -718,24 +680,33 @@ function DashboardContent() {
 
         {/* Main content area */}
         <div className="flex-1">
-          {/* Consolidated Filter Panel */}
-          <CollapsibleFilterPanel
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            sortOptions={sortOptions}
-            filterOnlyNoDeadline={filterOnlyNoDeadline}
-            setFilterOnlyNoDeadline={setFilterOnlyNoDeadline}
-            filterOnlyNoFunding={filterOnlyNoFunding}
-            setFilterOnlyNoFunding={setFilterOnlyNoFunding}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-          />
+          {/* Sort dropdown - no filters, just sorts */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-6">
+            <div className="flex items-center gap-4">
+              <label htmlFor="sort-select" className="text-sm font-medium text-gray-700">
+                Sort by:
+              </label>
+              <select
+                id="sort-select"
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="block w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              >
+                <option value="deadline">Deadline (earliest first)</option>
+                <option value="deadline_latest">Deadline (latest first)</option>
+                <option value="amount">Funding Amount (highest first)</option>
+                <option value="amount_asc">Funding Amount (lowest first)</option>
+                <option value="title_asc">Title (A-Z)</option>
+                <option value="title_desc">Title (Z-A)</option>
+              </select>
+            </div>
+          </div>
 
           {/* Tab Content */}
           {activeTab === 'recommended' && (
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-xl font-bold mb-4">Recommended Grants</h2>
-              {filteredAndSortedGrants.recommended.length > 0 ? (
+              {sortedGrants.recommended.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-fr">
                     {displayedGrants.recommended.map((grant, index) => {
@@ -753,13 +724,13 @@ function DashboardContent() {
                             ref={scoredGrant.id === pendingGrantId ? cardRef : undefined}
                             id={scoredGrant.id}
                           title={scoredGrant.title}
-                          agency={scoredGrant.data_source || scoredGrant.agency_name}
-                          closeDate={scoredGrant.close_date}
-                          fundingAmount={scoredGrant.award_ceiling}
-                          description={scoredGrant.description_short}
-                          categories={scoredGrant.activity_category || []}
+                          agency={scoredGrant.funding_organization_name}
+                          closeDate={scoredGrant.application_deadline}
+                          fundingAmount={scoredGrant.funding_amount_max}
+                          description={scoredGrant.summary}
+                          categories={scoredGrant.activity_categories || []}
                           sourceUrl={scoredGrant.source_url}
-                          opportunityId={scoredGrant.opportunity_id}
+                          opportunityId={scoredGrant.opportunity_number}
                           onSave={() => handleGrantInteraction(scoredGrant.id, 'saved')}
                           onApply={() => handleApplyClick(scoredGrant.id)} // Shows confirmation first
                           onIgnore={() => handleGrantInteraction(scoredGrant.id, 'ignored')}
@@ -782,20 +753,6 @@ function DashboardContent() {
                     />
                   </div>
                 </>
-              ) : searchTerm ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matching grants</h3>
-                  <p className="text-gray-600 mb-4">Try adjusting your search terms or filters</p>
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    Clear Search
-                  </button>
-                </div>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm p-8 text-center">
                   <svg className="w-16 h-16 text-primary-200 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -817,7 +774,7 @@ function DashboardContent() {
           {activeTab === 'saved' && (
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-xl font-bold mb-4">Saved Grants</h2>
-              {filteredAndSortedGrants.saved.length > 0 ? (
+              {sortedGrants.saved.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-fr">
                     {displayedGrants.saved.map((grant) => (
@@ -826,13 +783,13 @@ function DashboardContent() {
                         key={grant.id}
                         id={grant.id}
                         title={grant.title}
-                        agency={grant.data_source || grant.agency_name}
-                        closeDate={grant.close_date}
-                        fundingAmount={grant.award_ceiling}
-                        description={grant.description_short}
-                        categories={grant.activity_category || []}
+                        agency={grant.funding_organization_name}
+                        closeDate={grant.application_deadline}
+                        fundingAmount={grant.funding_amount_max}
+                        description={grant.summary}
+                        categories={grant.activity_categories || []}
                         sourceUrl={grant.source_url}
-                        opportunityId={grant.opportunity_id}
+                        opportunityId={grant.opportunity_number}
                         onSave={() => handleGrantInteraction(grant.id, 'saved')} // Allows unsaving
                         onApply={() => handleApplyClick(grant.id)}
                         onIgnore={() => handleGrantInteraction(grant.id, 'ignored')}
@@ -852,20 +809,6 @@ function DashboardContent() {
                     />
                   </div>
                 </>
-              ) : searchTerm ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matching saved grants</h3>
-                  <p className="text-gray-600 mb-4">Try adjusting your search terms or filters</p>
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    Clear Search
-                  </button>
-                </div>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm p-8 text-center">
                   <svg className="w-16 h-16 text-primary-200 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -887,7 +830,7 @@ function DashboardContent() {
           {activeTab === 'applied' && (
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-xl font-bold mb-4">Applied Grants</h2>
-              {filteredAndSortedGrants.applied.length > 0 ? (
+              {sortedGrants.applied.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-fr">
                     {displayedGrants.applied.map((grant) => (
@@ -895,13 +838,13 @@ function DashboardContent() {
                         key={grant.id}
                         id={grant.id}
                         title={grant.title}
-                        agency={grant.data_source || grant.agency_name}
-                        closeDate={grant.close_date}
-                        fundingAmount={grant.award_ceiling}
-                        description={grant.description_short}
-                        categories={grant.activity_category || []}
+                        agency={grant.funding_organization_name}
+                        closeDate={grant.application_deadline}
+                        fundingAmount={grant.funding_amount_max}
+                        description={grant.summary}
+                        categories={grant.activity_categories || []}
                         sourceUrl={grant.source_url}
-                        opportunityId={grant.opportunity_id}
+                        opportunityId={grant.opportunity_number}
                         onApply={() => handleGrantInteraction(grant.id, 'applied')} // Allows un-applying
                         onIgnore={() => handleGrantInteraction(grant.id, 'ignored')} // Allows ignoring
                         onSave={() => handleGrantInteraction(grant.id, 'saved')} // Allows saving
@@ -921,20 +864,6 @@ function DashboardContent() {
                     />
                   </div>
                 </>
-              ) : searchTerm ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matching applied grants</h3>
-                  <p className="text-gray-600 mb-4">Try adjusting your search terms or filters</p>
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    Clear Search
-                  </button>
-                </div>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm p-8 text-center">
                   <svg className="w-16 h-16 text-primary-200 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -956,7 +885,7 @@ function DashboardContent() {
           {activeTab === 'ignored' && (
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-xl font-bold mb-4">Ignored Grants</h2>
-              {filteredAndSortedGrants.ignored.length > 0 ? (
+              {sortedGrants.ignored.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-fr">
                     {displayedGrants.ignored.map((grant) => (
@@ -965,13 +894,13 @@ function DashboardContent() {
                         key={grant.id}
                         id={grant.id}
                         title={grant.title}
-                        agency={grant.data_source || grant.agency_name}
-                        closeDate={grant.close_date}
-                        fundingAmount={grant.award_ceiling}
-                        description={grant.description_short}
-                        categories={grant.activity_category || []}
+                        agency={grant.funding_organization_name}
+                        closeDate={grant.application_deadline}
+                        fundingAmount={grant.funding_amount_max}
+                        description={grant.summary}
+                        categories={grant.activity_categories || []}
                         sourceUrl={grant.source_url}
-                        opportunityId={grant.opportunity_id}
+                        opportunityId={grant.opportunity_number}
                         onSave={() => handleGrantInteraction(grant.id, 'saved')}
                         onApply={() => handleApplyClick(grant.id)}
                         onIgnore={() => handleGrantInteraction(grant.id, 'ignored')} // Allows un-ignoring
@@ -991,20 +920,6 @@ function DashboardContent() {
                     />
                   </div>
                 </>
-              ) : searchTerm ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matching ignored grants</h3>
-                  <p className="text-gray-600 mb-4">Try adjusting your search terms or filters</p>
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    Clear Search
-                  </button>
-                </div>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm p-8 text-center">
                   <svg className="w-16 h-16 text-primary-200 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

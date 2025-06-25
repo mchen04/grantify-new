@@ -18,6 +18,8 @@ node_modules/
 !.env.example
 !.env.*.example
 .env.vault
+.env.backup
+*.env.backup
 # Specific frontend env files
 frontend/.env.local
 frontend/.env.production
@@ -91,6 +93,7 @@ desktop.ini
 *.temp
 *.cache
 *.bak
+*.backup
 *.swp
 *~
 .eslintcache
@@ -99,6 +102,8 @@ tmp/
 temp/
 .temp/
 .tmp/
+.cache/
+cache/
 
 # ========================
 # Security Files
@@ -126,6 +131,11 @@ certificates/
 .yarn/
 .pnpm-store/
 .pnp.*
+# Duplicate lock files
+package-lock*.json
+!package-lock.json
+yarn.lock.*
+!yarn.lock
 
 # ========================
 # Debugging
@@ -147,32 +157,47 @@ datadog-config.json
 # ========================
 # Project Specific
 # ========================
-# Deployment guide (keep this tracked)
-# DEPLOYMENT_GUIDE.md is tracked
-
-# Test connection file
+# Test and debug files
 test-connection.js
-
-# Maintenance and debugging scripts
 check-orphaned-interactions.js
 cleanup-*.js
 test-*.js
 debug-*.js
 fix-*.js
+scratch.js
+playground.js
+experiment*.js
 
-# Frontend specific log files
+# Frontend specific files
 frontend/frontend.log
+frontend/src/utils/maintenance.ts
 
-# Typo/temporary files
+# Backend specific files
+backend/src/routes/maintenance.ts
+backend/data/
+backend/downloads/
+backend/scraped-data/
+
+# Log files
 colnsole.txt
 console.txt
 output.txt
 temp-*.txt
 debug.txt
+log_*
+log_frontend
+log_console
+log_backend
+*.log.txt
+*-debug.log
 
-# Maintenance utilities (temporary development files)
-frontend/src/utils/maintenance.ts
-backend/src/routes/maintenance.ts
+# Personal notes and drafts
+notes.md
+TODO.md
+NOTES.md
+personal-notes/
+drafts/
+.obsidian/
 
 # Claude-related documentation and files
 claude.md
@@ -187,6 +212,9 @@ CLAUDE.md
 # Supabase local development
 supabase/
 .supabase/
+supabase/.temp/
+supabase/.branches/
+supabase/seed.sql.backup
 
 # Other AI/IDE assistants
 .cursor/
@@ -194,6 +222,9 @@ supabase/
 .copilot/
 .tabnine/
 .kite/
+.continue/
+.aider/
+.github/copilot-chat/
 
 # Local development tools
 .devcontainer/
@@ -236,6 +267,37 @@ response-*.json
 # Generated documentation
 docs/generated/
 api-docs/generated/
+.claude
+
+# ========================
+# Analytics and Tracking
+# ========================
+.vercel/insights/
+analytics-data/
+user-metrics/
+.segment/
+.mixpanel/
+
+# ========================
+# Build Analytics
+# ========================
+.next/analyze/
+bundle-stats.html
+webpack-stats.json
+lighthouse-reports/
+coverage-final.json
+
+# ========================
+# Additional Development Tools
+# ========================
+.fleet/
+.zed/
+.nova/
+.swc/
+.parcel-cache/
+.rollup.cache/
+.esbuild/
+.webpack-cache/
 
 # ========================
 # Production Files (keep tracked)
@@ -244,3 +306,5 @@ api-docs/generated/
 # !docker-compose.yml
 # !nginx.conf
 # !Dockerfile.*
+# !package-lock.json
+# !yarn.lock

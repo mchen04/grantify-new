@@ -7,7 +7,7 @@ import Layout from '@/components/layout/Layout';
 import apiClient, { grantsApi } from '@/lib/apiClient';
 import { Grant, GrantFilter, SelectOption } from '@/types/grant';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGrantInteractions } from '@/hooks/useGrantInteractions';
+import { useInteractions } from '@/contexts/InteractionContext';
 import { InteractionStatus } from '@/types/interaction';
 import { debounce } from '@/utils/debounce';
 import { cancelAllRequests } from '@/lib/apiClient';
@@ -78,6 +78,7 @@ function SearchContent() {
   
   // Track interacted grant IDs locally for instant updates
   const [localInteractedIds, setLocalInteractedIds] = useState<Set<string>>(new Set());
+  const [hiddenGrantIds, setHiddenGrantIds] = useState<Set<string>>(new Set());
   
   // UI state
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -96,17 +97,10 @@ function SearchContent() {
 
   // Context hooks
   const { user, session, isLoading: authLoading } = useAuth();
+  const { getInteractionStatus, updateUserInteraction } = useInteractions();
   
-  // Grant interactions hook
-  const { 
-    handleSaveGrant: saveGrant,
-    handleIgnoreGrant: ignoreGrant,
-    handleApplyGrant: applyGrant,
-    interactionLoading 
-  } = useGrantInteractions({
-    userId: user?.id,
-    onError: setError
-  });
+  // Note: Using InteractionContext directly instead of useGrantInteractions hook
+  // for better integration with the search functionality
   
   // Refs
   const searchResultsRef = React.useRef<{
@@ -182,12 +176,16 @@ function SearchContent() {
       apiFilters.search = submittedSearchTerm;
     }
     
-    // Always include user_id if available to filter out interacted grants
+    // Always include user_id if available for personalization
     if (user) {
       apiFilters.user_id = user.id;
-      // For search page, exclude all interaction types (saved, applied, ignored)
-      // This ensures interacted grants disappear from search results
+      // Exclude grants the user has already interacted with from search results
       apiFilters.exclude_interaction_types = 'saved,applied,ignored';
+      console.log('[Search] Building API filters with user:', {
+        userId: user.id,
+        excludeInteractionTypes: apiFilters.exclude_interaction_types,
+        allFilters: apiFilters
+      });
     }
     
     // Deadline filters
@@ -255,12 +253,13 @@ function SearchContent() {
     if (filter.loiDueDateTo) {
       apiFilters.loi_due_date_to = filter.loiDueDateTo;
     }
-    if (filter.earliestStartDateFrom) {
-      apiFilters.earliest_start_date_from = filter.earliestStartDateFrom;
-    }
-    if (filter.earliestStartDateTo) {
-      apiFilters.earliest_start_date_to = filter.earliestStartDateTo;
-    }
+    // Note: earliestStartDate properties removed as they don't exist in GrantFilter type
+    // if (filter.earliestStartDateFrom) {
+    //   apiFilters.earliest_start_date_from = filter.earliestStartDateFrom;
+    // }
+    // if (filter.earliestStartDateTo) {
+    //   apiFilters.earliest_start_date_to = filter.earliestStartDateTo;
+    // }
     
     // Project period
     if (filter.projectPeriodMinYears) {
@@ -270,37 +269,39 @@ function SearchContent() {
       apiFilters.project_period_max_years = filter.projectPeriodMaxYears;
     }
     
-    // Agency filters
-    if (filter.agencies && filter.agencies.length > 0) {
-      apiFilters.agencies = filter.agencies.join(',');
+    // Agency filters (using organizations instead of agencies)
+    if (filter.organizations && filter.organizations.length > 0) {
+      apiFilters.agencies = filter.organizations.join(',');
     }
-    if (filter.agency_subdivisions && filter.agency_subdivisions.length > 0) {
-      apiFilters.agency_subdivisions = filter.agency_subdivisions.join(',');
+    if (filter.organization_subdivisions && filter.organization_subdivisions.length > 0) {
+      apiFilters.agency_subdivisions = filter.organization_subdivisions.join(',');
     }
-    if (filter.agency_codes && filter.agency_codes.length > 0) {
-      apiFilters.agency_codes = filter.agency_codes.join(',');
+    if (filter.organization_codes && filter.organization_codes.length > 0) {
+      apiFilters.agency_codes = filter.organization_codes.join(',');
     }
     
     // Grant type filters
     if (filter.grant_types && filter.grant_types.length > 0) {
       apiFilters.grant_types = filter.grant_types.join(',');
     }
-    if (filter.activity_codes && filter.activity_codes.length > 0) {
-      apiFilters.activity_codes = filter.activity_codes.join(',');
+    // Note: activity_codes property doesn't exist in GrantFilter, using activity_categories
+    if (filter.activity_categories && filter.activity_categories.length > 0) {
+      apiFilters.activity_codes = filter.activity_categories.join(',');
     }
     if (filter.activity_categories && filter.activity_categories.length > 0) {
       apiFilters.activity_categories = filter.activity_categories.join(',');
     }
-    if (filter.announcement_types && filter.announcement_types.length > 0) {
-      apiFilters.announcement_types = filter.announcement_types.join(',');
-    }
+    // Note: announcement_types property doesn't exist in GrantFilter
+    // if (filter.announcement_types && filter.announcement_types.length > 0) {
+    //   apiFilters.announcement_types = filter.announcement_types.join(',');
+    // }
     
     // Eligibility filters
     if (filter.eligible_applicant_types && filter.eligible_applicant_types.length > 0) {
       apiFilters.eligible_applicant_types = filter.eligible_applicant_types.join(',');
     }
-    if (filter.eligibility_pi) {
-      apiFilters.eligibility_pi = filter.eligibility_pi;
+    if (filter.eligibility_criteria) {
+      apiFilters.eligibility_criteria = filter.eligibility_criteria;
     }
     
     // Content filters
@@ -312,20 +313,21 @@ function SearchContent() {
     }
     
     // Other filters
-    if (filter.costSharing !== null && filter.costSharing !== undefined) {
-      apiFilters.cost_sharing = filter.costSharing;
+    if (filter.costSharingRequired !== null && filter.costSharingRequired !== undefined) {
+      apiFilters.cost_sharing = filter.costSharingRequired;
     }
-    if (filter.clinicalTrialAllowed !== null && filter.clinicalTrialAllowed !== undefined) {
-      apiFilters.clinical_trial_allowed = filter.clinicalTrialAllowed;
+    // Note: clinicalTrialAllowed property doesn't exist in GrantFilter
+    // if (filter.clinicalTrialAllowed !== null && filter.clinicalTrialAllowed !== undefined) {
+    //   apiFilters.clinical_trial_allowed = filter.clinicalTrialAllowed;
+    // }
+    if (filter.data_source_ids && filter.data_source_ids.length > 0) {
+      apiFilters.data_sources = filter.data_source_ids.join(',');
     }
-    if (filter.data_sources && filter.data_sources.length > 0) {
-      apiFilters.data_sources = filter.data_sources.join(',');
-    }
-    if (filter.status) {
-      apiFilters.status = filter.status;
-    }
+    // Status filters - only use statuses array
     if (filter.statuses && filter.statuses.length > 0) {
-      apiFilters.statuses = filter.statuses.join(',');
+      // Backend expects 'status' parameter as array for multiple values
+      // Pass the array directly, apiClient will handle it properly
+      apiFilters.status = filter.statuses;
     }
     
     // Show overdue grants filter
@@ -333,12 +335,28 @@ function SearchContent() {
       apiFilters.show_overdue = filter.showOverdue;
     }
     
+    console.log('[Search] buildApiFilters completed:', {
+      hasUser: !!user,
+      hasExcludeParam: !!apiFilters.exclude_interaction_types,
+      filterCount: Object.keys(apiFilters).length,
+      hasStatus: !!apiFilters.status,
+      status: apiFilters.status,
+      filterStatuses: filter.statuses,
+      filterStatus: filter.status
+    });
     
     return apiFilters;
   }, [filter, user, submittedSearchTerm]);
 
   // Create a stable fetch function that doesn't depend on filter state
   const fetchGrantsCore = useCallback(async (apiFilters: any, sortBy: string, isInitialLoad = false, appendMode = false) => {
+    console.log('[Search] fetchGrantsCore called:', {
+      apiFilters,
+      isInitialLoad,
+      appendMode,
+      hasSession: !!session?.access_token
+    });
+    
     try {
       // Only show loading state on initial load
       if (isInitialLoad) {
@@ -347,6 +365,13 @@ function SearchContent() {
       setError(null);
       
       const response = await apiClient.grants.getGrants(apiFilters, sortBy, session?.access_token);
+      
+      console.log('[Search] API response:', {
+        hasData: !!response.data,
+        hasError: !!response.error,
+        grantCount: response.data?.grants?.length || 0,
+        totalCount: response.data?.totalCount
+      });
       
       if (response.error) {
         throw new Error(response.error);
@@ -388,6 +413,11 @@ function SearchContent() {
       const perPage = SEARCH_GRANTS_PER_PAGE || 6;
       const calculatedPages = count > 0 ? Math.ceil(count / perPage) : 1;
       setTotalPages(calculatedPages);
+      
+      // Clear local tracking after successful fetch
+      // The backend has now excluded these grants, so we don't need to track them locally
+      setLocalInteractedIds(new Set());
+      setHiddenGrantIds(new Set());
     } catch (error: any) {
       setError(`Failed to load grants: ${error.message || 'Please try again later.'}`);
     } finally {
@@ -403,6 +433,12 @@ function SearchContent() {
 
   // Fetch function - accepts optional parameter to control loading spinner
   const fetchGrants = useCallback((showLoadingSpinner = true) => {
+    console.log('[Search] fetchGrants called, user state:', {
+      user,
+      userId: user?.id,
+      authLoading,
+      session: !!session
+    });
     
     // Don't fetch if we're in the middle of applying or interacting with grants
     if (isApplyingRef.current) {
@@ -416,6 +452,7 @@ function SearchContent() {
         setIsSearching(true);
       }
       const apiFilters = buildApiFilters();
+      console.log('[Search] API filters built:', apiFilters);
       // Check if this is the initial load
       const isInitial = !hasLoadedInitialRef.current;
       if (isInitial) {
@@ -430,7 +467,7 @@ function SearchContent() {
       });
     } else {
     }
-  }, [buildApiFilters, filter.sortBy, fetchGrantsCore]);
+  }, [buildApiFilters, filter.sortBy, fetchGrantsCore, user, authLoading, session]);
 
   // Special function to fetch grants after interaction to fill the gap
   const fetchGrantsAfterInteraction = useCallback(() => {
@@ -484,7 +521,7 @@ function SearchContent() {
         if (response.data) {
           setAvailableOptions({
             dataSources: response.data.dataSources || ['NIH'],
-            agencies: response.data.agencies || [],
+            agencies: response.data.organizations || [],
             grantTypes: response.data.grantTypes || [],
             activityCategories: response.data.activityCategories || [],
             applicantTypes: response.data.applicantTypes || []
@@ -534,74 +571,135 @@ function SearchContent() {
 
   // Grant interaction handlers
   const handleSaveInteraction = useCallback(async (grantId: string, status: InteractionStatus | null): Promise<void> => {
+    console.log('[Search] Save interaction called:', { 
+      grantId, 
+      status, 
+      statusType: typeof status,
+      hasUser: !!user,
+      userId: user?.id 
+    });
+    
     if (!user) {
       setError('You must be logged in to perform this action.');
       return;
     }
     
-    if (status === null) return;
-    
     try {
       // Set flag to prevent search animation during interaction
       isApplyingRef.current = true;
       
-      // Make the API call to save the grant first
-      await saveGrant(grantId, false);
+      // Immediately hide the grant for instant UI update
+      setHiddenGrantIds(prev => new Set([...prev, grantId]));
       
-      // Only remove from UI and fetch more if successful
-      setLocalInteractedIds(prev => new Set([...prev, grantId]));
-      setGrants(prev => prev.filter(g => g.id !== grantId));
-      setTotalCount(prev => Math.max(0, prev - 1));
+      // Use InteractionContext to update the interaction
+      // If status is null, it means we're toggling off an existing interaction
+      // If status is 'saved', it means we're adding a new save
+      console.log('[Search] Calling updateUserInteraction with:', { grantId, action: status === null ? null : 'saved' });
       
-      // Fetch more grants to fill the gap
-      fetchGrantsAfterInteraction();
-    } catch (error: any) {
-      // Don't modify UI on error
-      setError(`Failed to save grant: ${error.message || 'Please try again.'}`);
-    } finally {
-      // Clear the flag
+      // Always pass 'saved' - the InteractionContext handles toggling internally
+      await updateUserInteraction(grantId, 'saved');
+      
+      console.log('[Search] updateUserInteraction completed successfully');
+      
+      // Don't refresh immediately - the grant is already hidden locally
+      // Schedule a background refresh after a short delay to sync with backend
       setTimeout(() => {
-        isApplyingRef.current = false;
-      }, 1000); // Small delay to ensure fetch completes
+        if (!isApplyingRef.current) {
+          fetchGrants(false);
+        }
+      }, 500);
+    } catch (error: any) {
+      console.error('[Search] Error in handleSaveInteraction:', error);
+      setError(`Failed to save grant: ${error.message || 'Please try again.'}`);
+      // Remove from hidden grants on error
+      setHiddenGrantIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(grantId);
+        return newSet;
+      });
+    } finally {
+      // Clear the flag immediately
+      isApplyingRef.current = false;
     }
-  }, [user, saveGrant, fetchGrantsAfterInteraction]);
+  }, [user, updateUserInteraction, fetchGrants]);
   
   const handleIgnoreInteraction = useCallback(async (grantId: string, status: InteractionStatus | null): Promise<void> => {
+    console.log('[Search] Ignore interaction called:', { 
+      grantId, 
+      status, 
+      statusType: typeof status,
+      hasUser: !!user,
+      userId: user?.id 
+    });
+    
     if (!user) {
       setError('You must be logged in to perform this action.');
       return;
     }
     
-    if (status === null) return;
-    
     try {
       // Set flag to prevent search animation during interaction
       isApplyingRef.current = true;
       
-      // Make the API call to ignore the grant first
-      await ignoreGrant(grantId, false);
+      // Immediately hide the grant for instant UI update
+      setHiddenGrantIds(prev => new Set([...prev, grantId]));
       
-      // Only remove from UI and fetch more if successful
-      setLocalInteractedIds(prev => new Set([...prev, grantId]));
-      setGrants(prev => prev.filter(g => g.id !== grantId));
-      setTotalCount(prev => Math.max(0, prev - 1));
+      // Use InteractionContext to update the interaction
+      // If status is null, it means we're toggling off an existing interaction
+      // If status is 'ignored', it means we're adding a new ignore
+      console.log('[Search] Calling updateUserInteraction with:', { grantId, action: status === null ? null : 'ignored' });
       
-      // Fetch more grants to fill the gap
-      fetchGrantsAfterInteraction();
-    } catch (error: any) {
-      // Don't modify UI on error
-      setError(`Failed to ignore grant: ${error.message || 'Please try again.'}`);
-    } finally {
-      // Clear the flag
+      // Always pass 'ignored' - the InteractionContext handles toggling internally
+      await updateUserInteraction(grantId, 'ignored');
+      
+      console.log('[Search] updateUserInteraction completed successfully');
+      
+      // Don't refresh immediately - the grant is already hidden locally
+      // Schedule a background refresh after a short delay to sync with backend
       setTimeout(() => {
-        isApplyingRef.current = false;
-      }, 1000); // Small delay to ensure fetch completes
+        if (!isApplyingRef.current) {
+          fetchGrants(false);
+        }
+      }, 500);
+    } catch (error: any) {
+      console.error('[Search] Error in handleIgnoreInteraction:', error);
+      setError(`Failed to ignore grant: ${error.message || 'Please try again.'}`);
+      // Remove from hidden grants on error
+      setHiddenGrantIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(grantId);
+        return newSet;
+      });
+    } finally {
+      // Clear the flag immediately
+      isApplyingRef.current = false;
     }
-  }, [user, ignoreGrant, fetchGrantsAfterInteraction]);
+  }, [user, updateUserInteraction, fetchGrants]);
 
   const handleApplyClick = useCallback(async (grantId: string, status?: InteractionStatus | 'pending' | null): Promise<void> => {
+    console.log('[Search] Apply clicked for grant:', grantId, 'status:', status);
+    
     // Handle unapply
     if (status === null) {
+      // User is un-applying - remove the applied interaction
+      if (!user) {
+        setError('You must be logged in to perform this action.');
+        return;
+      }
+      
+      try {
+        isApplyingRef.current = true;
+        // Always pass 'applied' - the InteractionContext handles toggling internally
+        await updateUserInteraction(grantId, 'applied');
+        setLocalInteractedIds(prev => new Set([...prev, grantId]));
+        fetchGrants(false);
+      } catch (error: any) {
+        setError(`Failed to update application: ${error.message || 'Please try again.'}`);
+      } finally {
+        setTimeout(() => {
+          isApplyingRef.current = false;
+        }, 1000);
+      }
       return;
     }
     
@@ -617,25 +715,23 @@ function SearchContent() {
       // Don't show dialog immediately - wait for user to return
       return;
     }
-  }, [grants]);
+  }, [grants, user, updateUserInteraction, fetchGrants]);
   
   const handleApplyConfirmation = useCallback(async (didApply: boolean) => {
+    console.log('[Search] Apply confirmation:', didApply, 'for grant:', pendingGrantId);
     setShowApplyConfirmation(false);
     
     if (didApply && pendingGrantId) {
       try {
-        // Make the API call to apply for the grant first
-        await applyGrant(pendingGrantId, false);
+        // Use InteractionContext to update the interaction
+        await updateUserInteraction(pendingGrantId, 'applied');
         
-        // Only remove from UI and fetch more if successful
+        // Track locally interacted grants
         setLocalInteractedIds(prev => new Set([...prev, pendingGrantId]));
-        setGrants(prev => prev.filter(g => g.id !== pendingGrantId));
-        setTotalCount(prev => Math.max(0, prev - 1));
         
-        // Fetch more grants to fill the gap
-        fetchGrantsAfterInteraction();
+        // Refresh search results to exclude the newly interacted grant
+        fetchGrants(false);
       } catch (error: any) {
-        // Don't modify UI on error
         setError(`Failed to apply for grant: ${error.message || 'Please try again.'}`);
       }
     }
@@ -645,23 +741,20 @@ function SearchContent() {
     
     // Clear the flag to allow fetching again
     isApplyingRef.current = false;
-  }, [pendingGrantId, applyGrant, fetchGrantsAfterInteraction]);
+  }, [pendingGrantId, updateUserInteraction, fetchGrants]);
 
   const handleConfirmApply = useCallback(async () => {
     if (pendingGrantId) {
       try {
-        // Make the API call to apply for the grant first
-        await applyGrant(pendingGrantId, false);
+        // Use InteractionContext to update the interaction
+        await updateUserInteraction(pendingGrantId, 'applied');
         
-        // Only remove from UI and fetch more if successful
+        // Track locally interacted grants
         setLocalInteractedIds(prev => new Set([...prev, pendingGrantId]));
-        setGrants(prev => prev.filter(g => g.id !== pendingGrantId));
-        setTotalCount(prev => Math.max(0, prev - 1));
         
-        // Fetch more grants to fill the gap
-        fetchGrantsAfterInteraction();
+        // Refresh search results to exclude the newly interacted grant
+        fetchGrants(false);
       } catch (error: any) {
-        // Don't modify UI on error
         setError(`Failed to apply for grant: ${error.message || 'Please try again.'}`);
       }
     }
@@ -670,7 +763,7 @@ function SearchContent() {
     setPendingGrantId(null);
     setPendingGrantTitle('');
     isApplyingRef.current = false;
-  }, [pendingGrantId, applyGrant, fetchGrantsAfterInteraction]);
+  }, [pendingGrantId, updateUserInteraction, fetchGrants]);
 
   const handleCancelApply = useCallback(() => {
     setShowApplyConfirmation(false);
@@ -717,12 +810,34 @@ function SearchContent() {
 
   // Effects
   useEffect(() => {
+    console.log('[Search] Auth effect running:', {
+      authLoading,
+      user: !!user,
+      session: !!session,
+      isAuthReady: isAuthReady(authLoading, user, session),
+      initialFetchDone
+    });
+    
     // Only fetch grants after auth state is determined AND session is available
     if (isAuthReady(authLoading, user, session) && !initialFetchDone) {
+      console.log('[Search] Auth ready, fetching grants...');
       fetchGrants();
       setInitialFetchDone(true);
     }
   }, [fetchGrants, authLoading, initialFetchDone, user, session]);
+  
+  // Fallback: If auth takes too long, fetch grants anyway
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!initialFetchDone && authLoading) {
+        console.log('[Search] Auth timeout - fetching grants anyway');
+        fetchGrants();
+        setInitialFetchDone(true);
+      }
+    }, 3000); // 3 second timeout
+    
+    return () => clearTimeout(timer);
+  }, [initialFetchDone, authLoading, fetchGrants]);
   
   // Create a debounced fetch function for filter changes
   const debouncedFetchGrants = useMemo(
@@ -783,7 +898,7 @@ function SearchContent() {
   }, [filter.page, filter.sortBy, filter.fundingMin, filter.fundingMax, 
       filter.deadlineMinDays, filter.deadlineMaxDays, filter.includeNoDeadline, 
       filter.onlyNoDeadline, filter.includeFundingNull, filter.onlyNoFunding, 
-      filter.showOverdue, submittedSearchTerm, initialFetchDone, debouncedFetchGrants]);
+      filter.showOverdue, submittedSearchTerm, initialFetchDone]);
   
 
   // Cleanup effect for component unmount
@@ -899,27 +1014,22 @@ function SearchContent() {
             </div>
           </div>
           
-          {/* Search Status Indicator */}
-          {isSearching && !loading && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className="text-blue-700 font-medium">Searching for grants...</span>
-              </div>
-            </div>
-          )}
+          {/* Search Status Indicator - Removed to avoid duplicate loading states */}
           
           {/* Search Results */}
           <SearchContainer
-            grants={grants}
-            loading={loading}
+            grants={grants.filter(grant => {
+              // Immediately filter out hidden grants
+              if (hiddenGrantIds.has(grant.id)) {
+                return false;
+              }
+              return true;
+            })}
+            loading={loading || isSearching}
             error={error}
             totalPages={totalPages || 1}
             currentPage={filter.page || 1}
-            totalCount={totalCount || 0}
+            totalCount={Math.max(0, (totalCount || 0) - hiddenGrantIds.size)}
             query={filter.searchTerm}
             onPageChange={goToPage}
             onGrantSave={handleSaveInteraction}
@@ -930,6 +1040,7 @@ function SearchContent() {
             pendingApplyGrant={pendingGrantId ? grants.find(g => g.id === pendingGrantId) || null : null}
             onConfirmApply={handleConfirmApply}
             onCancelApply={handleCancelApply}
+            getInteractionStatus={getInteractionStatus}
           />
         </div>
         

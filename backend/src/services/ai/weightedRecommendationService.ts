@@ -84,7 +84,7 @@ class WeightedRecommendationService {
       if (excludeOverdue) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        query = query.or(`close_date.gte.${today.toISOString()},close_date.is.null`);
+        query = query.or(`application_deadline.gte.${today.toISOString()},application_deadline.is.null`);
       }
 
       // IMPORTANT: Exclude ALL grants the user has already interacted with
@@ -233,7 +233,7 @@ class WeightedRecommendationService {
     if (preferences.project_description_embedding) {
       embeddingSimilarities = await this.getEmbeddingSimilarities(
         supabase,
-        grants.map(g => g.id),
+        grants.map(g => g.id).filter((id): id is string => id !== undefined),
         preferences.project_description_embedding
       );
     }
@@ -428,7 +428,8 @@ class WeightedRecommendationService {
    * This now includes organization type matching as users should include it in their project description
    * Example: "As a university researcher..." or "Our nonprofit organization..."
    */
-  private calculateEmbeddingScore(grantId: string, similarities: Map<string, number>): number {
+  private calculateEmbeddingScore(grantId: string | undefined, similarities: Map<string, number>): number {
+    if (!grantId) return 0.4;
     const similarity = similarities.get(grantId);
     if (!similarity) return 0.4; // Lower default score if no embedding - embeddings are now critical
     
@@ -457,14 +458,14 @@ class WeightedRecommendationService {
     }
 
     // No funding info - neutral but not great
-    if (!grant.award_ceiling && !grant.award_floor) {
+    if (!grant.funding_amount_max && !grant.funding_amount_min) {
       return 0.4; // Lower score for unclear funding
     }
 
     const prefMin = preferences.funding_min || 0;
     const prefMax = preferences.funding_max || Number.MAX_SAFE_INTEGER;
-    const grantMin = grant.award_floor || 0;
-    const grantMax = grant.award_ceiling || Number.MAX_SAFE_INTEGER;
+    const grantMin = grant.funding_amount_min || 0;
+    const grantMax = grant.funding_amount_max || Number.MAX_SAFE_INTEGER;
 
     // Perfect match - grant range is within user's preferred range
     if (grantMin >= prefMin && grantMax <= prefMax) {
@@ -506,12 +507,12 @@ class WeightedRecommendationService {
    * This is CRITICAL - users need adequate time to prepare quality applications
    */
   private calculateDeadlineScore(grant: Grant, preferences: UserPreferences): number {
-    if (!grant.close_date) {
+    if (!grant.application_deadline) {
       return 0.2; // Very low score for grants without deadlines (risky)
     }
 
     const now = new Date();
-    const deadline = new Date(grant.close_date);
+    const deadline = new Date(grant.application_deadline);
     const daysUntilDeadline = Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Overdue grants should never be shown
@@ -554,13 +555,8 @@ class WeightedRecommendationService {
     }
 
     // Primary agency match
-    if (preferences.agencies.includes(grant.agency_name)) {
+    if (preferences.agencies.includes(grant.funding_organization_name)) {
       return 1.0;
-    }
-
-    // Subdivision match
-    if (grant.agency_subdivision && preferences.agency_subdivisions?.includes(grant.agency_subdivision)) {
-      return 0.8;
     }
 
     return 0;
@@ -574,16 +570,12 @@ class WeightedRecommendationService {
     let matches = 0;
     let totalChecks = 0;
 
-    // Activity categories
-    if (preferences.activity_categories && preferences.activity_categories.length > 0) {
+    // Grant types
+    if (preferences.grant_types && preferences.grant_types.length > 0 && grant.grant_type) {
       totalChecks++;
-      const grantCategories = grant.activity_category || [];
-      const matchingCategories = grantCategories.filter(cat => 
-        preferences.activity_categories!.includes(cat)
-      );
-      if (matchingCategories.length > 0) {
+      if (preferences.grant_types.includes(grant.grant_type)) {
         matches++;
-        score += matchingCategories.length / Math.max(grantCategories.length, preferences.activity_categories.length);
+        score += 1;
       }
     }
 
@@ -596,10 +588,13 @@ class WeightedRecommendationService {
       }
     }
 
-    // Activity codes
-    if (preferences.activity_codes && preferences.activity_codes.length > 0 && grant.activity_code) {
+    // Activity codes (closest to CFDA)
+    if (preferences.activity_codes && preferences.activity_codes.length > 0 && grant.cfda_numbers) {
       totalChecks++;
-      if (preferences.activity_codes.includes(grant.activity_code)) {
+      const matchingCodes = grant.cfda_numbers.some(cfda => 
+        preferences.activity_codes!.includes(cfda)
+      );
+      if (matchingCodes) {
         matches++;
         score += 1;
       }
@@ -608,7 +603,7 @@ class WeightedRecommendationService {
     // Keywords
     if (preferences.keywords && preferences.keywords.length > 0) {
       totalChecks++;
-      const description = `${grant.title} ${grant.description_short} ${grant.description_full}`.toLowerCase();
+      const description = `${grant.title} ${grant.summary || ''} ${grant.description || ''}`.toLowerCase();
       const matchingKeywords = preferences.keywords.filter(keyword => 
         description.includes(keyword.toLowerCase())
       );
@@ -632,42 +627,27 @@ class WeightedRecommendationService {
       return 1.0;
     }
 
-    if (!grant.project_period_max_years) {
-      return 0.5; // Neutral if no project period info
-    }
+    // Project period info is not in the new schema
+    return 1.0; // Perfect score as this field doesn't exist in new schema
 
     const prefMin = preferences.project_period_min_years || 1;
     const prefMax = preferences.project_period_max_years || 10;
-    const grantMax = grant.project_period_max_years;
+    // Project period is not in new schema
+    return 1.0;
 
-    // Perfect match
-    if (grantMax >= prefMin && grantMax <= prefMax) {
-      return 1.0;
-    }
-
-    // Too short
-    if (grantMax < prefMin) {
-      return Math.max(0.3, grantMax / prefMin);
-    }
-
-    // Too long
-    if (grantMax > prefMax) {
-      return Math.max(0.5, prefMax / grantMax);
-    }
-
-    return 0.5;
+    // Removed project period logic as it doesn't exist in new schema
   }
 
   /**
    * Calculate freshness bonus score (0-1)
    */
   private calculateFreshnessScore(grant: Grant): number {
-    if (!grant.post_date) {
+    if (!grant.posted_date) {
       return 0;
     }
 
     const now = new Date();
-    const postDate = new Date(grant.post_date);
+    const postDate = new Date(grant.posted_date);
     const daysSincePosted = Math.floor((now.getTime() - postDate.getTime()) / (1000 * 60 * 60 * 24));
 
     // Maximum bonus for grants posted within last 7 days
@@ -708,10 +688,10 @@ class WeightedRecommendationService {
     // Simple similarity based on agency and category
     let similarityScore = 0;
     for (const interaction of positiveInteractions) {
-      if (interaction.grant_agency_name === grant.agency_name) {
+      if (interaction.grant_agency_name === grant.funding_organization_name) {
         similarityScore += 0.5;
       }
-      if (interaction.grant_category && grant.activity_category?.includes(interaction.grant_category)) {
+      if (interaction.grant_type && grant.grant_type === interaction.grant_type) {
         similarityScore += 0.5;
       }
     }
@@ -743,8 +723,8 @@ class WeightedRecommendationService {
 
     // CRITICAL: Deadline (25% weight)
     if (scores.deadlineScore >= 0.9) {
-      const daysLeft = grant.close_date ? 
-        Math.floor((new Date(grant.close_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      const daysLeft = grant.application_deadline ? 
+        Math.floor((new Date(grant.application_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
       reasons.push(`⏰ Perfect timing: ${daysLeft} days to prepare application`);
     } else if (scores.deadlineScore >= 0.7) {
       reasons.push('⏰ Good deadline window for quality preparation');
@@ -770,7 +750,7 @@ class WeightedRecommendationService {
 
     // NICE TO HAVE: Agency preference (5% weight)
     if (scores.agencyScore === 1.0) {
-      reasons.push(`🏛️ From preferred agency: ${grant.agency_name}`);
+      reasons.push(`🏛️ From preferred agency: ${grant.funding_organization_name}`);
     }
 
     // MINOR: Freshness (3% weight)
@@ -801,8 +781,8 @@ class WeightedRecommendationService {
     }
 
     // Add note about checking eligibility
-    if (grant.eligible_applicants && grant.eligible_applicants.length > 0) {
-      reasons.push(`📝 Check eligibility: ${grant.eligible_applicants.slice(0, 2).join(', ')}${grant.eligible_applicants.length > 2 ? '...' : ''}`);
+    if (grant.eligibility_criteria) {
+      reasons.push(`📝 Check eligibility requirements`);
     }
 
     return reasons;

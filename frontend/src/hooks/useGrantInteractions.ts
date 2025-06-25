@@ -93,8 +93,8 @@ export function useGrantInteractions({
 
         if (error) throw new Error(error);
         
-        // Clear the cache to ensure fresh data on next fetch
-        cacheUtils.clearCache();
+        // Clear only interactions cache to ensure fresh data on next fetch
+        cacheUtils.clearInteractionsCache();
         
         // Announce the action for screen readers
         const actionMessages = {
@@ -139,8 +139,8 @@ export function useGrantInteractions({
 
         if (error) throw new Error(error);
         
-        // Clear the cache to ensure fresh data on next fetch
-        cacheUtils.clearCache();
+        // Clear only interactions cache to ensure fresh data on next fetch
+        cacheUtils.clearInteractionsCache();
       } catch (error: any) {
         
         onError(`Failed to undo ${action.replace('ed', '')}: ${error.message || 'Please try again.'}`);

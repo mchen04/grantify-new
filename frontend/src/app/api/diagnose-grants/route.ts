@@ -20,29 +20,29 @@ export async function GET(request: NextRequest) {
     // 2. Search for grants with 'cancer' in title
     const { data: titleMatches, count: titleCount } = await supabase
       .from('grants')
-      .select('id, title, agency_name, award_ceiling')
+      .select('id, title, funding_organization_name, funding_amount_max')
       .ilike('title', `%${searchTerm}%`)
       .limit(20);
     
     // 3. Search for grants with 'cancer' in short description
     const { data: shortDescMatches, count: shortDescCount } = await supabase
       .from('grants')
-      .select('id, title, agency_name, award_ceiling, description_short')
-      .ilike('description_short', `%${searchTerm}%`)
+      .select('id, title, funding_organization_name, funding_amount_max, summary')
+      .ilike('summary', `%${searchTerm}%`)
       .limit(20);
     
     // 4. Search for grants with 'cancer' in full description
     const { data: fullDescMatches, count: fullDescCount } = await supabase
       .from('grants')
-      .select('id, title, agency_name, award_ceiling')
-      .ilike('description_full', `%${searchTerm}%`)
+      .select('id, title, funding_organization_name, funding_amount_max')
+      .ilike('description', `%${searchTerm}%`)
       .limit(20);
     
     // 5. Combined search (like the API does)
     const { data: combinedMatches, count: combinedCount } = await supabase
       .from('grants')
-      .select('id, title, agency_name, award_ceiling, description_short')
-      .or(`title.ilike.%${searchTerm}%,description_short.ilike.%${searchTerm}%,description_full.ilike.%${searchTerm}%`)
+      .select('id, title, funding_organization_name, funding_amount_max, summary')
+      .or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
       .limit(20);
     
     // 6. Check for specific grant titles
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     
     const { data: specificGrants } = await supabase
       .from('grants')
-      .select('id, title, agency_name, award_ceiling')
+      .select('id, title, funding_organization_name, funding_amount_max')
       .in('title', specificTitles);
     
     // 7. Get a sample of grants with embeddings
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         },
         shortDescriptionMatches: {
           count: shortDescCount,
-          grants: shortDescMatches?.map(g => ({ id: g.id, title: g.title, desc: g.description_short?.substring(0, 100) + '...' }))
+          grants: shortDescMatches?.map(g => ({ id: g.id, title: g.title, desc: g.summary?.substring(0, 100) + '...' }))
         },
         fullDescriptionMatches: {
           count: fullDescCount,
@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
           grants: combinedMatches?.map(g => ({ 
             id: g.id, 
             title: g.title,
-            agency: g.agency_name,
-            amount: g.award_ceiling,
-            hasDescShort: !!g.description_short
+            agency: g.funding_organization_name,
+            amount: g.funding_amount_max,
+            hasDescShort: !!g.summary
           }))
         }
       },

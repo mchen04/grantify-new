@@ -111,10 +111,18 @@ let csrfTokenFetchPromise: Promise<string | null> | null = null;
 async function fetchCSRFToken(accessToken: string): Promise<string | null> {
   try {
     console.log('[apiClient] Fetching CSRF token...');
+    
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
     const response = await fetch(`${API_BASE_URL}/api/csrf-token`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
-      }
+      },
+      signal: controller.signal
+    }).finally(() => {
+      clearTimeout(timeoutId);
     });
     
     if (response.ok) {
@@ -144,7 +152,12 @@ async function fetchCSRFToken(accessToken: string): Promise<string | null> {
       });
     }
   } catch (error) {
-    console.error('[apiClient] Error fetching CSRF token:', error);
+    // Check if it's an abort error (timeout)
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[apiClient] CSRF token fetch timed out after 5 seconds');
+    } else {
+      console.error('[apiClient] Error fetching CSRF token:', error);
+    }
   }
   return null;
 }
@@ -447,11 +460,24 @@ export const grantsApi = {
   getGrants: async (filters?: Record<string, unknown>, sortBy?: string, accessToken?: string | null) => {
     const params = new URLSearchParams();
     
+    console.log('[apiClient] getGrants called with filters:', {
+      filters,
+      sortBy,
+      hasAccessToken: !!accessToken,
+      userId: filters?.user_id,
+      excludeInteractionTypes: filters?.exclude_interaction_types
+    });
+    
     // Add all filters to params
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          params.append(key, String(value));
+          // Handle arrays specially to support multiple values for the same key
+          if (Array.isArray(value)) {
+            value.forEach(item => params.append(key, String(item)));
+          } else {
+            params.append(key, String(value));
+          }
         }
       });
     }
@@ -466,9 +492,9 @@ export const grantsApi = {
     }
     
     const queryParams = params.toString() ? `?${params.toString()}` : '';
-    // Final query params prepared
+    console.log('[apiClient] Final query string:', queryParams);
     
-    return fetchApi<{ grants: unknown[] }>(`/grants${queryParams}`, {}, accessToken, { ttl: 5 * 60 * 1000 }); // 5 min cache
+    return fetchApi<{ grants: unknown[], totalCount: number }>(`/grants${queryParams}`, {}, accessToken, { ttl: 5 * 60 * 1000 }); // 5 min cache
   },
   
   // Get a specific grant by ID
@@ -476,32 +502,14 @@ export const grantsApi = {
     return fetchApi<{ grant: unknown }>(`/grants/${id}`, {}, accessToken, { ttl: 10 * 60 * 1000 }); // 10 min cache
   },
   
-  // Get similar grants
-  getSimilarGrants: async (params: Record<string, string>, accessToken?: string | null) => {
-    const queryParams = new URLSearchParams(params).toString();
-    return fetchApi<{ grants: unknown[] }>(`/grants/similar?${queryParams}`, {}, accessToken, { ttl: 5 * 60 * 1000 }); // 5 min cache
-  },
-  
-  // Search grants using semantic similarity
-  searchSemantic: async (query: string, options?: { limit?: number, match_threshold?: number }, accessToken?: string | null) => {
+  // Search grants
+  searchGrants: async (query: string, options?: { limit?: number, page?: number }, accessToken?: string | null) => {
     const params = new URLSearchParams({
-      query,
+      q: query,
       ...(options?.limit && { limit: options.limit.toString() }),
-      ...(options?.match_threshold && { match_threshold: options.match_threshold.toString() })
+      ...(options?.page && { page: options.page.toString() })
     });
-    return fetchApi<{ grants: unknown[], count: number, method: string }>(`/grants/search-semantic?${params}`, {}, accessToken, { ttl: 3 * 60 * 1000 }); // 3 min cache
-  },
-  
-  // Search grants using pre-computed embedding
-  searchByEmbedding: async (embedding: number[], options?: { limit?: number, match_threshold?: number }, accessToken?: string | null) => {
-    return fetchApi<{ grants: unknown[], count: number, method: string }>(`/grants/search-by-embedding`, {
-      method: 'POST',
-      body: JSON.stringify({
-        embedding,
-        limit: options?.limit || 5,
-        match_threshold: options?.match_threshold || 0.6
-      })
-    }, accessToken, { ttl: 60 * 60 * 1000 }); // 1 hour cache for hardcoded embeddings
+    return fetchApi<{ grants: unknown[], count: number }>(`/grants/search?${params}`, {}, accessToken, { ttl: 3 * 60 * 1000 }); // 3 min cache
   },
   
   // Get recommended grants for a user
@@ -547,15 +555,18 @@ export const grantsApi = {
   // Get grant metadata for filters
   getGrantMetadata: async (accessToken?: string | null) => {
     return fetchApi<{
-      agencies: string[];
+      organizations: string[];
       subdivisions: string[];
       grantTypes: string[];
-      activityCodes: string[];
+      cfdaNumbers: string[];
       activityCategories: string[];
-      announcementTypes: string[];
+      fundingInstruments: string[];
       applicantTypes: string[];
       dataSources: string[];
       statuses: string[];
+      geographicScopes: string[];
+      countries: string[];
+      states: string[];
     }>(`/grants/metadata`, {}, accessToken, { ttl: 60 * 60 * 1000 }); // 1 hour cache
   },
 };
@@ -605,7 +616,7 @@ export const usersApi = {
         user_id: userId,
         grant_id: grantId,
         action,
-        timestamp: new Date().toISOString(),
+        // Remove timestamp - it's auto-generated by the database
       }),
     }, accessToken);
   },

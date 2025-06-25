@@ -19,10 +19,10 @@ interface GrantCardProps {
   categories: string[];
   sourceUrl?: string | null; // URL to the grant application page
   opportunityId?: string; // Opportunity ID for grants.gov fallback
-  onSave?: (status: InteractionStatus | null) => void;
-  onApply?: (status: InteractionStatus | 'pending' | null) => void;
-  onShare?: () => void;
-  onIgnore?: (status: InteractionStatus | null) => void;
+  onSave?: (status: InteractionStatus | null) => void | Promise<void>;
+  onApply?: (status: InteractionStatus | 'pending' | null) => void | Promise<void>;
+  onShare?: () => void | Promise<void>;
+  onIgnore?: (status: InteractionStatus | null) => void | Promise<void>;
   isApplied?: boolean;
   isIgnored?: boolean;
   isSaved?: boolean;
@@ -68,6 +68,14 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
   // Use the InteractionContext to get the current status
   const interactionStatus = getInteractionStatus(id);
   
+  console.log('[GrantCard] Interaction status check:', {
+    id,
+    interactionStatus,
+    propIsApplied: isApplied,
+    propIsIgnored: isIgnored,
+    propIsSaved: isSaved
+  });
+  
   // Use the context status if provided, otherwise fall back to props
   const isAppliedCurrent = interactionStatus === 'applied' || isApplied;
   const isIgnoredCurrent = interactionStatus === 'ignored' || isIgnored;
@@ -105,34 +113,45 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
   );
 
   const handleApplyClick = useCallback(() => {
+    console.log('[GrantCard] Apply clicked:', { 
+      id, 
+      isAppliedCurrent, 
+      hasOnApply: !!onApply,
+      sourceUrl,
+      opportunityId
+    });
+    
     // If already applied, toggle the status
     if (isAppliedCurrent) {
       onApply?.(null);
       return;
     }
     
-    // Open the application link in a new tab
-    // Use source_url if available, otherwise fall back to grants.gov with opportunity ID
-    const applyUrl = sourceUrl || 
-      (opportunityId ? `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opportunityId}` : 
-       `https://www.grants.gov/search-results.html?keywords=${encodeURIComponent(title)}`);
-    
-    window.open(applyUrl, '_blank');
-    
-    // Signal to parent that apply was clicked but don't mark as applied yet
-    // Parent should track this and show confirmation when user returns
-    onApply?.('pending');
-  }, [sourceUrl, opportunityId, title, isAppliedCurrent, onApply]);
+    // For dashboard, the parent component handles opening the link
+    // For search page, we open it here
+    if (onApply) {
+      onApply('pending');
+    } else {
+      // Fallback for when no onApply handler is provided
+      const applyUrl = sourceUrl || 
+        (opportunityId ? `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opportunityId}` : 
+         `https://www.grants.gov/search-results.html?keywords=${encodeURIComponent(title)}`);
+      
+      window.open(applyUrl, '_blank');
+    }
+  }, [id, sourceUrl, opportunityId, title, isAppliedCurrent, onApply]);
 
   const handleSaveClick = useCallback(() => {
+    console.log('[GrantCard] Save clicked:', { id, isSavedCurrent, hasOnSave: !!onSave });
     // Toggle the saved status
-    const newStatus = isSavedCurrent ? null : 'saved';
+    const newStatus: InteractionStatus | null = isSavedCurrent ? null : 'saved' as InteractionStatus;
     onSave?.(newStatus);
   }, [id, isSavedCurrent, onSave]);
 
   const handleIgnoreClick = useCallback(() => {
+    console.log('[GrantCard] Ignore clicked:', { id, isIgnoredCurrent, hasOnIgnore: !!onIgnore });
     // Toggle the ignored status
-    const newStatus = isIgnoredCurrent ? null : 'ignored';
+    const newStatus: InteractionStatus | null = isIgnoredCurrent ? null : 'ignored' as InteractionStatus;
     onIgnore?.(newStatus);
   }, [id, isIgnoredCurrent, onIgnore]);
 

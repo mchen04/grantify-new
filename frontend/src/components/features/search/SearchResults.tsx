@@ -19,6 +19,7 @@ interface SearchResultsProps {
   onShare: (grantId: string) => Promise<void>;
   onIgnore: (grantId: string, status: InteractionStatus | null) => Promise<void>;
   onConfirmApply?: (grantId: string) => Promise<void>;
+  getInteractionStatus: (grantId: string) => InteractionStatus | undefined;
 }
 
 // Define the ref type
@@ -42,7 +43,8 @@ const SearchResults = forwardRef<SearchResultsRef, SearchResultsProps>(({
   onSave,
   onShare,
   onIgnore,
-  onConfirmApply
+  onConfirmApply,
+  getInteractionStatus
 }, ref) => {
   // Ensure numeric values are valid (Number.isFinite checks for NaN, Infinity, and undefined)
   const safePage = (Number.isFinite(page) && page > 0) ? page : 1;
@@ -306,26 +308,26 @@ const SearchResults = forwardRef<SearchResultsRef, SearchResultsProps>(({
         {uniqueGrants.map((grant, index) => (
           <div
             key={grant.id}
-            className="h-full animate-fade-in-up"
+            className="h-full animate-fade-in-up transition-all duration-300 ease-out"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <GrantCard
               id={grant.id}
               title={grant.title}
-              agency={grant.data_source || grant.agency_name}
-              closeDate={grant.close_date}
-              fundingAmount={grant.award_ceiling}
-              description={grant.description_short}
-              categories={grant.activity_category || []}
+              agency={grant.funding_organization_name}
+              closeDate={grant.application_deadline}
+              fundingAmount={grant.funding_amount_max}
+              description={grant.summary}
+              categories={grant.activity_categories || []}
               sourceUrl={grant.source_url}
-              opportunityId={grant.opportunity_id}
+              opportunityId={grant.source_identifier}
               onApply={(status) => handleApplyClick(grant.id, status)}
               onSave={(status) => handleInteraction(grant.id, onSave, status)}
               onShare={() => onShare(grant.id)}
               onIgnore={(status) => handleInteraction(grant.id, onIgnore, status)}
-              isApplied={grant.interactions?.[0]?.action === 'applied'}
-              isIgnored={grant.interactions?.[0]?.action === 'ignored'}
-              isSaved={grant.interactions?.[0]?.action === 'saved'}
+              isApplied={getInteractionStatus(grant.id) === 'applied'}
+              isIgnored={getInteractionStatus(grant.id) === 'ignored'}
+              isSaved={getInteractionStatus(grant.id) === 'saved'}
             />
           </div>
         ))}

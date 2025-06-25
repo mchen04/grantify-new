@@ -157,7 +157,7 @@ export function useFetchDashboardData({
         
         // Get the current batch of chunks
         const endIndex = Math.min(i + MAX_CONCURRENT, chunks.length);
-        const currentBatchIndices = [];
+        const currentBatchIndices: number[] = [];
         for (let j = i; j < endIndex; j++) {
           currentBatchIndices.push(j);
         }

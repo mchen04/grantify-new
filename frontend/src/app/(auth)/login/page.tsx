@@ -16,10 +16,19 @@ function LoginContent() {
   // Check for error params from auth callback
   useEffect(() => {
     const authError = searchParams.get('error');
-    if (authError === 'auth_failed') {
-      setError('Authentication failed. Please try again.');
-    } else if (authError === 'unexpected_error') {
-      setError('An unexpected error occurred. Please try again.');
+    const errorMessages: Record<string, string> = {
+      'auth_failed': 'Authentication failed. Please try again.',
+      'unexpected_error': 'An unexpected error occurred. Please try again.',
+      'no_code': 'Google login was cancelled or failed. Please try again.',
+      'direct_access': 'Please login through the login page.',
+      'You cancelled the login process': 'Login was cancelled.',
+      'Google authentication service is temporarily unavailable': 'Google login is temporarily unavailable. Please try again later.',
+      'Authentication service is temporarily unavailable': 'Authentication service is temporarily unavailable.',
+      'Invalid authentication request': 'Invalid authentication request. Please try again.'
+    };
+    
+    if (authError) {
+      setError(errorMessages[authError] || `Authentication error: ${authError}`);
     }
   }, [searchParams]);
 
@@ -31,12 +40,15 @@ function LoginContent() {
   }, [user, isLoading, router]);
 
   const handleGoogleLogin = async () => {
+    console.log('[Login Page] Google login button clicked!');
     setError(null);
     
     try {
       setLoading(true);
+      console.log('[Login Page] Calling signInWithGoogle...');
       
       const { error } = await signInWithGoogle();
+      console.log('[Login Page] signInWithGoogle returned:', { error });
       
       if (error) {
         throw error;
@@ -79,7 +91,10 @@ function LoginContent() {
           )}
           
           <button
-            onClick={handleGoogleLogin}
+            onClick={() => {
+              console.log('[Login Page] Button clicked directly!');
+              handleGoogleLogin();
+            }}
             disabled={loading}
             className={`w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-gray-50 transition-all duration-300 ${
               loading ? 'opacity-70 cursor-not-allowed' : ''
@@ -120,9 +135,17 @@ function LoginContent() {
                   <ul className="text-sm text-gray-600 space-y-2">
                     <li>• Make sure pop-ups are enabled for this site</li>
                     <li>• Try using a different browser or incognito mode</li>
-                    <li>• Clear your browser cookies and cache</li>
+                    <li>• If you recently cleared Google cache, try signing out of Google first</li>
+                    <li>• Ensure third-party cookies are enabled</li>
                     <li>• <Link href="/account-help" className="text-blue-600 hover:text-blue-800">View detailed help guide</Link></li>
                   </ul>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">Debug info for support:</p>
+                    <code className="text-xs bg-gray-100 p-1 rounded block">
+                      Origin: {typeof window !== 'undefined' ? window.location.origin : 'N/A'}
+                    </code>
+                  </div>
                 </div>
               </details>
             </div>

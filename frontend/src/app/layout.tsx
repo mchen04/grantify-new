@@ -124,35 +124,39 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <Script id="error-handler" strategy="afterInteractive">
-          {`
-            // Handle unhandled promise rejections with Event objects
-            window.addEventListener('unhandledrejection', function(event) {
-              if (event.reason instanceof Event) {
-                
-                event.preventDefault();
-                return;
-              }
-              // Also catch DOMException and other browser event-like objects
-              if (event.reason && typeof event.reason === 'object' && 'type' in event.reason) {
-                
-                event.preventDefault();
-                return;
-              }
-            });
+        <Script 
+          id="error-handler" 
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Handle unhandled promise rejections with Event objects
+              window.addEventListener('unhandledrejection', function(event) {
+                if (event.reason instanceof Event) {
+                  // Silently handle Event objects
+                  event.preventDefault();
+                  return;
+                }
+                // Also catch DOMException and other browser event-like objects
+                if (event.reason && typeof event.reason === 'object' && 'type' in event.reason) {
+                  // Silently handle browser event-like objects
+                  event.preventDefault();
+                  return;
+                }
+              });
 
-            // Wrap window.dispatchEvent to catch Event dispatch errors
-            const originalDispatchEvent = window.dispatchEvent;
-            window.dispatchEvent = function(event) {
-              try {
-                return originalDispatchEvent.call(this, event);
-              } catch (error) {
-                
-                return false;
-              }
-            };
-          `}
-        </Script>
+              // Wrap window.dispatchEvent to catch Event dispatch errors
+              const originalDispatchEvent = window.dispatchEvent;
+              window.dispatchEvent = function(event) {
+                try {
+                  return originalDispatchEvent.call(this, event);
+                } catch (error) {
+                  // Silently handle dispatch errors
+                  return false;
+                }
+              };
+            `
+          }}
+        />
       </head>
       <body className={inter.className}>
         <StructuredData />

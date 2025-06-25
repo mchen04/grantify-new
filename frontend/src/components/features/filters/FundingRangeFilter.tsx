@@ -137,12 +137,12 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
 
   return (
     <div>
-      <label className="form-label">
-        Funding Range: {formatCurrency(localFundingMin)} - {formatCurrency(localFundingMax)}
-      </label>
+      <div className="text-xs text-gray-600 mb-1">
+        ${formatCurrency(localFundingMin)} - ${formatCurrency(localFundingMax)}
+      </div>
       
       {/* Quick funding range selection */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-1 mb-2">
         {fundingPresets.map((preset) => (
           <button
             key={preset.label}
@@ -158,7 +158,7 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
                 handleFundingOptionChange('only', false);
               }
             }}
-            className={`px-2 py-1 text-xs rounded-full transition-colors ${
+            className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
               localFundingMin === preset.min && localFundingMax === preset.max
                 ? 'bg-primary-100 text-primary-800 font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -171,10 +171,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
       </div>
       
       {/* Slider */}
-      <div className={`mt-2 px-2 ${onlyNoFunding ? 'opacity-50' : ''}`}>
+      <div className={`${onlyNoFunding ? 'opacity-50' : ''}`}>
         <div
           ref={rangeRef}
-          className="relative w-full h-2 bg-gray-200 rounded-lg"
+          className="relative w-full h-1.5 bg-gray-200 rounded-lg"
         >
           {/* Selected range highlight */}
           <div
@@ -187,7 +187,7 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
           
           {/* Minimum handle */}
           <div
-            className={`absolute w-4 h-4 bg-white border-2 border-primary-500 rounded-full -mt-1 -ml-2 cursor-pointer shadow-md ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
+            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
             style={{ left: `${minPercentage}%` }}
             onMouseDown={() => !onlyNoFunding && setIsDragging('min')}
             onTouchStart={() => !onlyNoFunding && setIsDragging('min')}
@@ -201,7 +201,7 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
           
           {/* Maximum handle */}
           <div
-            className={`absolute w-4 h-4 bg-white border-2 border-primary-500 rounded-full -mt-1 -ml-2 cursor-pointer shadow-md ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
+            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
             style={{ left: `${maxPercentage}%` }}
             onMouseDown={() => !onlyNoFunding && setIsDragging('max')}
             onTouchStart={() => !onlyNoFunding && setIsDragging('max')}
@@ -214,14 +214,14 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
           />
         </div>
         
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
           <span>$0</span>
           <span>$100M+</span>
         </div>
       </div>
       
       {/* Checkboxes */}
-      <div className="mt-3 space-y-2">
+      <div className="mt-2 space-y-1">
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -229,10 +229,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
             checked={includeFundingNull}
             onChange={(e) => handleFundingOptionChange('include', e.target.checked)}
             disabled={onlyNoFunding}
-            className="form-checkbox"
+            className="form-checkbox h-3 w-3"
           />
-          <label htmlFor="include-no-funding" className="ml-2 block text-sm text-gray-700">
-            Include grants with unspecified funding
+          <label htmlFor="include-no-funding" className="ml-1.5 text-xs text-gray-700">
+            Include unspecified
           </label>
         </div>
         <div className="flex items-center">
@@ -241,10 +241,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
             id="only-no-funding"
             checked={onlyNoFunding}
             onChange={(e) => handleFundingOptionChange('only', e.target.checked)}
-            className="form-checkbox"
+            className="form-checkbox h-3 w-3"
           />
-          <label htmlFor="only-no-funding" className="ml-2 block text-sm text-gray-700">
-            Only show grants with unspecified funding
+          <label htmlFor="only-no-funding" className="ml-1.5 text-xs text-gray-700">
+            Only unspecified
           </label>
         </div>
       </div>

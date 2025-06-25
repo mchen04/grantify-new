@@ -390,20 +390,20 @@ export default function InteractiveDemo() {
                           {grant.title || 'Untitled Grant'}
                         </h4>
                         <p className="text-sm text-gray-600">
-                          {grant.agency_name || grant.data_source || 'Unknown Agency'}
+                          {grant.funding_organization_name || 'Unknown Agency'}
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-center gap-1 mb-1">
                           <DollarIcon className="w-4 h-4 text-green-600" />
                           <p className="text-sm font-semibold text-gray-900">
-                            {formatCurrency(grant.award_ceiling)}
+                            {formatCurrency(grant.funding_amount_max)}
                           </p>
                         </div>
-                        {(grant.similarity_score || grant.match_score || index < 3) && (
+                        {((grant as any).similarity_score || (grant as any).match_score || index < 3) && (
                           <Badge variant="primary" className="text-xs">
-                            {grant.similarity_score || grant.match_score 
-                              ? `${Math.round((grant.similarity_score || grant.match_score || 0) * 100)}% Match`
+                            {(grant as any).similarity_score || (grant as any).match_score 
+                              ? `${Math.round(((grant as any).similarity_score || (grant as any).match_score || 0) * 100)}% Match`
                               : 'Related'}
                           </Badge>
                         )}
@@ -411,14 +411,14 @@ export default function InteractiveDemo() {
                     </div>
                     
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {grant.description_short || grant.description_full || 'No description available'}
+                      {grant.summary || grant.description || 'No description available'}
                     </p>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-sm">
                         <CalendarIcon className="w-4 h-4 text-gray-500" />
-                        <span className={grant.close_date ? 'text-red-600 font-medium' : 'text-gray-500'}>
-                          {formatDate(grant.close_date)}
+                        <span className={grant.application_deadline ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                          {formatDate(grant.application_deadline)}
                         </span>
                       </div>
                       <Button 

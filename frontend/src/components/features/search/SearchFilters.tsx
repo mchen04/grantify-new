@@ -4,16 +4,8 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { GrantFilter, SelectOption } from '@/types/grant';
 
-// Lazy load individual filter components
-const CompactAdvancedFilterPanel = dynamic(
-  () => import('@/components/features/filters/CompactAdvancedFilterPanel'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="animate-pulse bg-gray-200 h-32 rounded-md" />
-    )
-  }
-);
+// Import directly without dynamic loading to ensure it renders properly
+import CompactAdvancedFilterPanel from '@/components/features/filters/CompactAdvancedFilterPanel';
 
 const ActiveFilters = dynamic(
   () => import('@/components/features/filters/ActiveFilters'),
