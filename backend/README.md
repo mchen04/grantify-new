@@ -171,6 +171,179 @@ Automated sync with 13+ grant APIs:
 - USASPENDING
 - And more...
 
+## Database Schema
+
+### Overview
+PostgreSQL 15.8.1 database hosted on Supabase with the following architecture:
+- **Primary Schema**: `public`
+- **Total Tables**: 10 core tables
+- **Key Extensions**: pgvector (0.8.0), pg_trgm (1.6), btree_gin (1.3), pgcrypto (1.3), uuid-ossp (1.1)
+
+### Core Tables
+
+#### 1. `users`
+User accounts synced with Supabase Auth.
+```sql
+- id: uuid (PK, references auth.users)
+- email: text (unique, not null)
+- created_at: timestamptz
+- updated_at: timestamptz
+```
+**RLS**: Enabled | **Size**: 64 KB
+
+#### 2. `grants` 
+Main table storing all grant opportunities from multiple sources.
+```sql
+- id: uuid (PK)
+- data_source_id: uuid (FK to data_sources)
+- source_identifier: varchar (unique within source)
+- title: text (not null)
+- status: varchar (open|active|closed|awarded|forecasted|archived)
+- funding_amount_min/max: numeric
+- application_deadline: timestamptz
+- search_vector: tsvector (for full-text search)
+- raw_data: jsonb
+- [30+ additional fields for grant details]
+```
+**RLS**: Enabled | **Size**: 39 MB | **Records**: ~3,874
+
+#### 3. `data_sources`
+Configuration for grant data API sources.
+```sql
+- id: uuid (PK)
+- name: varchar (unique)
+- api_type: varchar (opportunities|awards|mixed|intelligence|verification)
+- base_url: text
+- auth_type: varchar (none|api_key|bearer)
+- update_frequency: varchar (realtime|hourly|4hours|daily|weekly|monthly)
+- geographic_coverage: varchar
+- rate_limit_per_minute: integer
+```
+**RLS**: Enabled | **Size**: 96 KB
+
+#### 4. `user_preferences`
+User settings for grant recommendations.
+```sql
+- user_id: uuid (PK, FK to users)
+- funding_min/max: numeric
+- preferred_countries: text[]
+- preferred_states: text[]
+- preferred_categories: jsonb
+- project_description: text
+- project_description_embedding: vector (1536 dimensions)
+- notification_frequency: varchar (realtime|daily|weekly|monthly|never)
+```
+**RLS**: Enabled | **Size**: 1.2 MB
+
+#### 5. `user_interactions`
+Tracks user actions on grants.
+```sql
+- id: uuid (PK)
+- user_id: uuid (FK to users)
+- grant_id: uuid (FK to grants)
+- action: varchar (viewed|saved|applied|ignored|shared|downloaded)
+- action_metadata: jsonb
+- notes: text
+- created_at: timestamptz
+```
+**RLS**: Enabled | **Size**: 96 KB
+
+#### 6. `api_sync_schedules`
+Defines automated sync jobs for data sources.
+```sql
+- id: uuid (PK)
+- data_source_id: uuid (FK to data_sources)
+- schedule_name: varchar
+- cron_expression: varchar
+- sync_strategy: varchar (full|incremental|differential)
+- is_active: boolean
+- max_records_per_sync: integer
+```
+**RLS**: Enabled | **Size**: 80 KB
+
+#### 7. `api_sync_logs`
+Detailed logs of all sync operations.
+```sql
+- id: uuid (PK)
+- data_source_id: uuid (FK to data_sources)
+- sync_type: varchar (scheduled|manual|webhook|retry)
+- status: varchar (started|in_progress|completed|failed|cancelled)
+- records_fetched/created/updated/failed: integer
+- duration_seconds: integer
+- error_details: jsonb
+```
+**RLS**: Enabled | **Size**: 40 KB
+
+#### 8. `api_sync_state`
+Maintains sync state for incremental updates.
+```sql
+- id: uuid (PK)
+- data_source_id: uuid (FK to data_sources)
+- state_key: varchar
+- state_value: jsonb
+- last_updated: timestamptz
+```
+**RLS**: Enabled | **Size**: 32 KB
+
+#### 9. `user_roles`
+Role-based access control.
+```sql
+- id: uuid (PK)
+- user_id: uuid (FK to auth.users)
+- role: varchar (user|admin|moderator)
+- created_at: timestamptz
+- updated_at: timestamptz
+```
+**RLS**: Enabled | **Size**: 72 KB
+
+#### 10. `csrf_tokens`
+CSRF protection tokens.
+```sql
+- id: uuid (PK)
+- user_id: uuid (FK to auth.users, unique)
+- token: varchar
+- expires_at: timestamptz
+- created_at: timestamptz
+```
+**RLS**: Enabled | **Size**: 136 KB
+
+### Database Features
+
+#### Full-Text Search
+- Implemented using `tsvector` on grants.search_vector
+- Automatically updated via triggers
+- Supports weighted search across title, description, and other fields
+
+#### Vector Embeddings
+- pgvector extension for semantic search
+- 1536-dimensional embeddings for project descriptions
+- Enables similarity-based grant recommendations
+
+#### Indexes
+- B-tree indexes on primary keys and foreign keys
+- GIN indexes for full-text search
+- HNSW indexes for vector similarity search
+- Composite indexes for common query patterns
+
+#### Row-Level Security (RLS)
+All tables have RLS enabled with policies for:
+- Users can only access their own data
+- Public read access for grants and metadata
+- Admin access for system operations
+
+### Key Extensions
+
+1. **pgvector (0.8.0)**: Vector similarity search for ML-powered recommendations
+2. **pg_trgm (1.6)**: Trigram-based fuzzy text matching
+3. **btree_gin (1.3)**: GIN indexing for common data types
+4. **pgcrypto (1.3)**: Cryptographic functions for security
+5. **uuid-ossp (1.1)**: UUID generation
+6. **pgjwt (0.2.0)**: JWT token handling
+7. **pg_stat_statements (1.10)**: Query performance monitoring
+8. **pg_graphql (1.5.11)**: GraphQL API support
+9. **pgsodium (3.1.8)**: Encryption functions
+10. **supabase_vault (0.2.8)**: Secure secret storage
+
 ## Maintenance
 
 ### Database
