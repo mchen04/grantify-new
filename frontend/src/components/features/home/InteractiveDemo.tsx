@@ -312,7 +312,7 @@ export default function InteractiveDemo() {
               >
                 {isSearching ? (
                   <span className="flex items-center gap-2">
-                    <span className="animate-spin">⚡</span>
+                    <span className="animate-spin">•</span>
                     Searching...
                   </span>
                 ) : (
@@ -330,13 +330,13 @@ export default function InteractiveDemo() {
         {isSearching && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="animate-pulse">🔍</span> Using AI to search across all grants...
+              <span className="animate-pulse">•</span> Using AI to search across all grants...
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="animate-pulse">🧠</span> Finding grants semantically similar to "cancer research"...
+              <span className="animate-pulse">•</span> Finding grants semantically similar to "cancer research"...
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="animate-pulse">📊</span> Ranking by AI similarity scores...
+              <span className="animate-pulse">•</span> Ranking by AI similarity scores...
             </div>
           </div>
         )}

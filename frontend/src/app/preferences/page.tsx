@@ -475,7 +475,7 @@ export default function Preferences() {
               {!agencyMatters && (
                 <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-blue-800">
-                    💡 <strong>Recommended:</strong> Leave this disabled unless you have specific agency requirements. 
+                    <strong>Recommended:</strong> Leave this disabled unless you have specific agency requirements. 
                     The AI can identify relevant agencies from your project description.
                   </p>
                 </div>

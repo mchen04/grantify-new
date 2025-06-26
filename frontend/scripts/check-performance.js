@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔍 Checking for performance issues...\n');
+console.log('Checking for performance issues...\n');
 
 // Check for large components
 const checkFileSize = (filePath) => {
   const stats = fs.statSync(filePath);
   const fileSizeInKB = stats.size / 1024;
   if (fileSizeInKB > 50) {
-    console.log(`⚠️  Large file: ${filePath} (${fileSizeInKB.toFixed(2)} KB)`);
+    console.log(`Warning: Large file: ${filePath} (${fileSizeInKB.toFixed(2)} KB)`);
   }
 };
 
@@ -19,13 +19,13 @@ const checkForSyncOperations = (filePath) => {
   // Check for localStorage/sessionStorage in render
   if (content.includes('localStorage.') || content.includes('sessionStorage.')) {
     if (!content.includes('useEffect')) {
-      console.log(`⚠️  Potential sync storage access in: ${filePath}`);
+      console.log(`Warning: Potential sync storage access in: ${filePath}`);
     }
   }
   
   // Check for heavy computations outside useMemo
   if (content.match(/\.map\(.*\)\.filter\(.*\)/) && !content.includes('useMemo')) {
-    console.log(`⚠️  Potential heavy computation without memoization in: ${filePath}`);
+    console.log(`Warning: Potential heavy computation without memoization in: ${filePath}`);
   }
 };
 
@@ -50,13 +50,13 @@ const checkDirectory = (dirPath) => {
 const buildStats = path.join(__dirname, '../.next/build-manifest.json');
 if (fs.existsSync(buildStats)) {
   const manifest = JSON.parse(fs.readFileSync(buildStats, 'utf8'));
-  console.log('\n📊 Page sizes:');
+  console.log('\nPage sizes:');
   Object.entries(manifest.pages).forEach(([page, assets]) => {
     console.log(`${page}: ${assets.length} assets`);
   });
 }
 
-console.log('\n🔍 Checking components...');
+console.log('\nChecking components...');
 checkDirectory(path.join(__dirname, '../src'));
 
-console.log('\n✅ Performance check complete!');
+console.log('\nPerformance check complete!');

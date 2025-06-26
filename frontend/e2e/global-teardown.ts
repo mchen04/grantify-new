@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 
 async function globalTeardown(config: FullConfig) {
-  console.log('🧹 Starting global teardown...')
+  console.log('Starting global teardown...')
   
   try {
     // Clean up any test data
@@ -13,7 +13,7 @@ async function globalTeardown(config: FullConfig) {
     const storageStatePath = path.join(__dirname, 'storage-state.json')
     if (fs.existsSync(storageStatePath)) {
       fs.unlinkSync(storageStatePath)
-      console.log('🗑️  Cleaned up storage state')
+      console.log('Cleaned up storage state')
     }
     
     // Clean up any temporary files created during tests
@@ -21,16 +21,16 @@ async function globalTeardown(config: FullConfig) {
     if (fs.existsSync(tempDir)) {
       // Keep test results for CI but clean up old ones locally
       if (!process.env.CI) {
-        console.log('🗂️  Test results preserved for local debugging')
+        console.log('Test results preserved for local debugging')
       }
     }
     
   } catch (error) {
-    console.error('❌ Global teardown failed:', error)
+    console.error('Global teardown failed:', error)
     // Don't throw here as it might mask test failures
   }
   
-  console.log('✅ Global teardown completed')
+  console.log('Global teardown completed')
 }
 
 export default globalTeardown

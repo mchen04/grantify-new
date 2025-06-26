@@ -2,7 +2,7 @@
 
 This document outlines the comprehensive testing strategy and infrastructure for the Grantify.ai frontend application.
 
-## 🧪 Testing Strategy Overview
+## Testing Strategy Overview
 
 Our testing pyramid consists of:
 
@@ -12,7 +12,7 @@ Our testing pyramid consists of:
 4. **Performance Tests** - Core Web Vitals and loading performance
 5. **Accessibility Tests** - WCAG compliance and a11y standards
 
-## 📁 Test Structure
+## Test Structure
 
 ```
 frontend/
@@ -43,7 +43,7 @@ frontend/
 └── playwright.config.ts         # Playwright configuration
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -110,7 +110,7 @@ Our E2E testing covers:
 - **Visual regression**: Screenshot comparisons
 - **Network interception**: API mocking and testing
 
-## 🧩 Test Types
+## Test Types
 
 ### Unit Tests
 
@@ -175,7 +175,7 @@ test('should perform basic grant search', async ({ page }) => {
 })
 ```
 
-## 🎯 Test Coverage
+## Test Coverage
 
 ### Coverage Thresholds
 
@@ -202,7 +202,7 @@ open coverage/lcov-report/index.html
 - **API Client**: Network layer and caching
 - **Context Providers**: State management
 
-## 🔍 Testing Best Practices
+## Testing Best Practices
 
 ### Unit Testing
 
@@ -227,7 +227,7 @@ open coverage/lcov-report/index.html
 4. **Test across browsers**: Ensure cross-browser compatibility
 5. **Keep tests maintainable**: Page object patterns for complex flows
 
-## 🚀 Performance Testing
+## Performance Testing
 
 ### Core Web Vitals
 
@@ -245,7 +245,7 @@ Our performance tests monitor:
 - **Image optimization**: WebP/AVIF formats
 - **Code splitting**: Dynamic imports for routes
 
-## ♿ Accessibility Testing
+## Accessibility Testing
 
 ### Automated Testing
 
@@ -261,7 +261,7 @@ Our performance tests monitor:
 - **High contrast**: Windows high contrast mode
 - **Zoom**: 200% zoom level usability
 
-## 🏗️ CI/CD Integration
+## CI/CD Integration
 
 ### GitHub Actions
 
@@ -284,7 +284,7 @@ Tests must pass before:
 - **Production Deployment**: Full test suite + smoke tests
 - **Dependency Updates**: Security and compatibility checks
 
-## 🐛 Debugging Tests
+## Debugging Tests
 
 ### Jest Debugging
 

@@ -158,7 +158,7 @@ export default function PrivacyPolicy() {
                           <span className="text-green-600">✓</span>
                           We Do NOT Sell Your Personal Information
                         </h3>
-                        <p className="text-green-800 font-medium mb-2">🛡️ Your Data is Not For Sale</p>
+                        <p className="text-green-800 font-medium mb-2">Your Data is Not For Sale</p>
                         <p className="text-green-700">
                           Grantify.ai does NOT sell, trade, or rent your personal information to third parties. We never have and never will. Your data is used solely to provide our grant matching service.
                         </p>
@@ -167,7 +167,7 @@ export default function PrivacyPolicy() {
                       <div className="bg-gray-50 rounded-lg p-6">
                         <h3 className="font-semibold text-gray-900 mb-3">Information from Social Sign-In</h3>
                         <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
-                          <p className="text-sm text-blue-800 font-medium mb-2">🔐 We use OAuth with Google - no passwords stored</p>
+                          <p className="text-sm text-blue-800 font-medium mb-2">We use OAuth with Google - no passwords stored</p>
                           <p className="text-sm text-blue-700">When you sign in with Google, we receive only basic information they provide.</p>
                         </div>
                         <ul className="space-y-2 text-gray-600">

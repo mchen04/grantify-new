@@ -1,6 +1,6 @@
 # Frontend Architecture Notes
 
-## Direct Database Access Removal - Complete ✅
+## Direct Database Access Removal - Complete
 
 ### Changes Made:
 1. **Removed all direct database queries from client-side code**
@@ -40,7 +40,7 @@ To fully complete the architecture:
 3. Remove `SUPABASE_SERVICE_ROLE_KEY` from frontend environment variables
 
 ### Current State:
-✅ **Client-side**: No direct database access
-✅ **Authentication**: Properly isolated in `supabaseClient.ts`
-✅ **Data access**: All through `apiClient` → Backend API
-⚠️ **Server-side API routes**: Still have direct queries (acceptable but not ideal)
+**Client-side**: No direct database access
+**Authentication**: Properly isolated in `supabaseClient.ts`
+**Data access**: All through `apiClient` → Backend API
+**WARNING - Server-side API routes**: Still have direct queries (acceptable but not ideal)

@@ -19,19 +19,19 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env.prod"
 
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "${BLUE}INFO: $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}SUCCESS: $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}WARNING: $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}ERROR: $1${NC}"
 }
 
 test_health_endpoint() {
@@ -152,7 +152,7 @@ test_containers() {
 }
 
 main() {
-    echo "🔍 Grantify.ai Production Verification"
+    echo "Grantify.ai Production Verification"
     echo "======================================"
     
     # Check if production environment exists
@@ -198,13 +198,13 @@ main() {
     echo ""
     
     # Summary
-    echo "📊 Quick Links:"
-    echo "   🌐 Website: https://$DOMAIN"
-    echo "   🔧 API: https://$DOMAIN/api"
-    echo "   🏥 Health: https://$DOMAIN/health"
-    echo "   📋 SSL Test: https://www.ssllabs.com/ssltest/analyze.html?d=$DOMAIN"
-    echo "   🔒 Security Test: https://securityheaders.com/?q=$DOMAIN"
-    echo "   ⚡ Speed Test: https://pagespeed.web.dev/report?url=https://$DOMAIN"
+    echo "Quick Links:"
+    echo "   Website: https://$DOMAIN"
+    echo "   API: https://$DOMAIN/api"
+    echo "   Health: https://$DOMAIN/health"
+    echo "   SSL Test: https://www.ssllabs.com/ssltest/analyze.html?d=$DOMAIN"
+    echo "   Security Test: https://securityheaders.com/?q=$DOMAIN"
+    echo "   Speed Test: https://pagespeed.web.dev/report?url=https://$DOMAIN"
     echo ""
 }
 

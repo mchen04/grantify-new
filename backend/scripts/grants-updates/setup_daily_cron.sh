@@ -49,7 +49,7 @@ EOF
 # Make the runner script executable
 chmod +x "$SCRIPT_DIR/run_daily_update.sh"
 
-echo "🔧 Setting up daily grants update cron job..."
+echo "Setting up daily grants update cron job..."
 echo ""
 echo "Choose your schedule:"
 echo "1) Every day at 2:00 AM (recommended)"
@@ -84,7 +84,7 @@ CRON_CMD="$CRON_SCHEDULE $SCRIPT_DIR/run_daily_update.sh"
 
 # Check if cron job already exists
 if crontab -l 2>/dev/null | grep -q "run_daily_update.sh"; then
-    echo "⚠️  Cron job already exists. Updating..."
+    echo "Cron job already exists. Updating..."
     # Remove old entry
     crontab -l | grep -v "run_daily_update.sh" | crontab -
 fi
@@ -93,11 +93,11 @@ fi
 (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
 
 echo ""
-echo "✅ Daily grants update cron job installed!"
+echo "Daily grants update cron job installed!"
 echo ""
-echo "📅 Schedule: $CRON_SCHEDULE"
-echo "📁 Logs will be saved to: $LOG_DIR"
-echo "🔧 Runner script: $SCRIPT_DIR/run_daily_update.sh"
+echo "Schedule: $CRON_SCHEDULE"
+echo "Logs will be saved to: $LOG_DIR"
+echo "Runner script: $SCRIPT_DIR/run_daily_update.sh"
 echo ""
 echo "To test the update manually, run:"
 echo "  cd $BACKEND_DIR && npm run update:grants"

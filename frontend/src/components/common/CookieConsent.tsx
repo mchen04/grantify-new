@@ -51,7 +51,7 @@ const CookieConsent: React.FC = () => {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                🍪 We Use Cookies
+                We Use Cookies
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   California Law Compliant
                 </span>

@@ -21,19 +21,19 @@ BACKUP_DIR="/tmp/grantify-backup-$(date +%Y%m%d-%H%M%S)"
 
 # Functions
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "${BLUE}INFO: $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}SUCCESS: $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}WARNING: $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}ERROR: $1${NC}"
 }
 
 check_requirements() {
@@ -241,29 +241,29 @@ show_deployment_info() {
     source "$ENV_FILE"
     
     echo ""
-    echo "🎉 Deployment Complete!"
+    echo "Deployment Complete!"
     echo "===================="
-    echo "🌐 Domain: https://$DOMAIN"
-    echo "🔧 API: https://$DOMAIN/api"
-    echo "🏥 Health: https://$DOMAIN/health"
+    echo "Domain: https://$DOMAIN"
+    echo "API: https://$DOMAIN/api"
+    echo "Health: https://$DOMAIN/health"
     echo ""
-    echo "📊 Monitoring:"
+    echo "Monitoring:"
     echo "   - Logs: docker-compose -f docker-compose.prod.yml logs -f"
     echo "   - Status: docker-compose -f docker-compose.prod.yml ps"
     echo "   - Stats: docker stats"
     echo ""
-    echo "🔄 Management Commands:"
+    echo "Management Commands:"
     echo "   - Restart: docker-compose -f docker-compose.prod.yml restart"
     echo "   - Update: ./scripts/deploy.sh"
     echo "   - SSL Renew: sudo certbot renew"
     echo ""
-    echo "📋 SSL Grade: https://www.ssllabs.com/ssltest/analyze.html?d=$DOMAIN"
+    echo "SSL Grade: https://www.ssllabs.com/ssltest/analyze.html?d=$DOMAIN"
     echo ""
 }
 
 # Main deployment flow
 main() {
-    echo "🚀 Starting Grantify.ai Production Deployment"
+    echo "Starting Grantify.ai Production Deployment"
     echo "============================================="
     
     check_requirements

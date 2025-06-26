@@ -74,7 +74,7 @@ function toISODate(dateStr: string | null | undefined): string | null {
 
 // Update grant status based on deadline
 async function updateExpiredGrants() {
-  console.log('\n🔄 Updating expired grants...');
+  console.log('\nUpdating expired grants...');
   
   const { data, error } = await supabase
     .from('grants')
@@ -86,7 +86,7 @@ async function updateExpiredGrants() {
   if (error) {
     console.error('Error updating expired grants:', error);
   } else {
-    console.log(`✅ Marked ${data?.length || 0} grants as closed due to passed deadlines`);
+    console.log(`Marked ${data?.length || 0} grants as closed due to passed deadlines`);
     updateStats.total.closed += data?.length || 0;
   }
 }
@@ -94,7 +94,7 @@ async function updateExpiredGrants() {
 // 1. Grants.gov API - Fetch both active and forecasted
 async function updateGrantsGov() {
   const API_NAME = 'Grants.gov';
-  console.log(`\n📥 Updating ${API_NAME}...`);
+  console.log(`\nUpdating ${API_NAME}...`);
   
   try {
     // Fetch active grants
@@ -180,13 +180,13 @@ async function updateGrantsGov() {
       }
     }
     
-    console.log(`✅ ${API_NAME}: ${newCount} new, ${updateCount} updated`);
+    console.log(`${API_NAME}: ${newCount} new, ${updateCount} updated`);
     logApiResult(API_NAME, 'new', newCount);
     logApiResult(API_NAME, 'updated', updateCount);
     
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ ${API_NAME} Error:`, errorMsg);
+    console.error(`${API_NAME} Error:`, errorMsg);
     logApiResult(API_NAME, 'errors', 1, errorMsg);
   }
 }
@@ -194,7 +194,7 @@ async function updateGrantsGov() {
 // 2. Federal Register API
 async function updateFederalRegister() {
   const API_NAME = 'Federal Register';
-  console.log(`\n📥 Updating ${API_NAME}...`);
+  console.log(`\nUpdating ${API_NAME}...`);
   
   try {
     const today = new Date();
@@ -251,13 +251,13 @@ async function updateFederalRegister() {
       }
     }
     
-    console.log(`✅ ${API_NAME}: ${newCount} new, ${updateCount} updated`);
+    console.log(`${API_NAME}: ${newCount} new, ${updateCount} updated`);
     logApiResult(API_NAME, 'new', newCount);
     logApiResult(API_NAME, 'updated', updateCount);
     
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ ${API_NAME} Error:`, errorMsg);
+    console.error(`${API_NAME} Error:`, errorMsg);
     logApiResult(API_NAME, 'errors', 1, errorMsg);
   }
 }
@@ -265,7 +265,7 @@ async function updateFederalRegister() {
 // 3. California Grants Portal
 async function updateCaliforniaGrants() {
   const API_NAME = 'California Grants';
-  console.log(`\n📥 Updating ${API_NAME}...`);
+  console.log(`\nUpdating ${API_NAME}...`);
   
   try {
     // Use data.ca.gov API
@@ -348,13 +348,13 @@ async function updateCaliforniaGrants() {
       }
     }
     
-    console.log(`✅ ${API_NAME}: ${newCount} new, ${updateCount} updated`);
+    console.log(`${API_NAME}: ${newCount} new, ${updateCount} updated`);
     logApiResult(API_NAME, 'new', newCount);
     logApiResult(API_NAME, 'updated', updateCount);
     
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ ${API_NAME} Error:`, errorMsg);
+    console.error(`${API_NAME} Error:`, errorMsg);
     logApiResult(API_NAME, 'errors', 1, errorMsg);
   }
 }
@@ -362,7 +362,7 @@ async function updateCaliforniaGrants() {
 // 4. World Bank Projects
 async function updateWorldBank() {
   const API_NAME = 'World Bank';
-  console.log(`\n📥 Updating ${API_NAME}...`);
+  console.log(`\nUpdating ${API_NAME}...`);
   
   try {
     const response = await axios.get('https://search.worldbank.org/api/v2/projects', {
@@ -428,13 +428,13 @@ async function updateWorldBank() {
       }
     }
     
-    console.log(`✅ ${API_NAME}: ${newCount} new, ${updateCount} updated`);
+    console.log(`${API_NAME}: ${newCount} new, ${updateCount} updated`);
     logApiResult(API_NAME, 'new', newCount);
     logApiResult(API_NAME, 'updated', updateCount);
     
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ ${API_NAME} Error:`, errorMsg);
+    console.error(`${API_NAME} Error:`, errorMsg);
     logApiResult(API_NAME, 'errors', 1, errorMsg);
   }
 }
@@ -442,7 +442,7 @@ async function updateWorldBank() {
 // 5. NSF Awards
 async function updateNSF() {
   const API_NAME = 'NSF Awards';
-  console.log(`\n📥 Updating ${API_NAME}...`);
+  console.log(`\nUpdating ${API_NAME}...`);
   
   try {
     const params = new URLSearchParams({
@@ -500,26 +500,26 @@ async function updateNSF() {
       }
     }
     
-    console.log(`✅ ${API_NAME}: ${newCount} new, ${updateCount} updated`);
+    console.log(`${API_NAME}: ${newCount} new, ${updateCount} updated`);
     logApiResult(API_NAME, 'new', newCount);
     logApiResult(API_NAME, 'updated', updateCount);
     
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ ${API_NAME} Error:`, errorMsg);
+    console.error(`${API_NAME} Error:`, errorMsg);
     logApiResult(API_NAME, 'errors', 1, errorMsg);
   }
 }
 
 // Refresh materialized view
 async function refreshMaterializedView() {
-  console.log('\n🔄 Refreshing materialized view...');
+  console.log('\nRefreshing materialized view...');
   
   try {
     await supabase.rpc('refresh_active_opportunities');
-    console.log('✅ Materialized view refreshed');
+    console.log('Materialized view refreshed');
   } catch (error) {
-    console.error('❌ Error refreshing materialized view:', error);
+    console.error('Error refreshing materialized view:', error);
   }
 }
 
@@ -547,7 +547,7 @@ async function generateReport() {
   
   // Print summary
   console.log('\n' + '='.repeat(60));
-  console.log('📊 DAILY UPDATE SUMMARY');
+  console.log('DAILY UPDATE SUMMARY');
   console.log('='.repeat(60));
   console.log(`Duration: ${duration} seconds`);
   console.log(`New grants: ${updateStats.total.new}`);
@@ -561,7 +561,7 @@ async function generateReport() {
 
 // Main execution
 async function main() {
-  console.log('🚀 Starting daily grants update...');
+  console.log('Starting daily grants update...');
   console.log(`Time: ${new Date().toISOString()}\n`);
   
   try {
@@ -587,7 +587,7 @@ async function main() {
     process.exit(updateStats.total.errors > 0 ? 1 : 0);
     
   } catch (error) {
-    console.error('💥 Fatal error during update:', error);
+    console.error('Fatal error during update:', error);
     process.exit(1);
   }
 }

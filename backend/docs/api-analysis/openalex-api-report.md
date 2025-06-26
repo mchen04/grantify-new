@@ -3,7 +3,7 @@
 **API Name**: OpenAlex API  
 **Base URL**: `https://api.openalex.org`  
 **Test Date**: 2025-06-22  
-**Status**: ✅ SUCCESS - Production Ready (Limited Use)
+**Status**: SUCCESS - Production Ready (Limited Use)
 
 ## Executive Summary
 
@@ -41,19 +41,19 @@ OpenAlex is a free and open catalog of scholarly works, authors, institutions, a
 ```bash
 curl -X GET "https://api.openalex.org/works?filter=has_fulltext:true&per_page=3"
 ```
-**Result**: ✅ Success - API accessible without authentication
+**Result**: Success - API accessible without authentication
 
 ### Test 2: List Major Funders
 ```bash
 curl -X GET "https://api.openalex.org/funders?per_page=5"
 ```
-**Result**: ✅ Success - Found major funders like NSF (394,591 works), NIH (386,574 works)
+**Result**: Success - Found major funders like NSF (394,591 works), NIH (386,574 works)
 
 ### Test 3: NSF-Funded Works
 ```bash
 curl -X GET "https://api.openalex.org/works?filter=grants.funder:https://openalex.org/F4320306076&per_page=3"
 ```
-**Result**: ✅ Success - Retrieved works with NSF grant information
+**Result**: Success - Retrieved works with NSF grant information
 
 ## Data Structure
 

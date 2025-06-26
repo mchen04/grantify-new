@@ -119,7 +119,7 @@ export default function CookiePolicy() {
                         Cookies are small text files that are placed on your device when you visit our website. They help us provide you with a better experience by remembering your preferences and analyzing how you use our service.
                       </p>
                       <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                        <h3 className="font-semibold text-gray-900 mb-2">🍪 California Cookie Law Compliance</h3>
+                        <h3 className="font-semibold text-gray-900 mb-2">California Cookie Law Compliance</h3>
                         <p className="text-blue-700">
                           Under California law, we must inform you about cookies and obtain your consent for non-essential cookies. You have the right to accept or reject cookies.
                         </p>
@@ -151,7 +151,7 @@ export default function CookiePolicy() {
 
                       <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
                         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                          <span className="text-gray-600">❌</span>
+                          <span className="text-gray-600">×</span>
                           Analytics Cookies (Not Used)
                         </h3>
                         <p className="text-gray-600 mb-3">We do not currently use analytics cookies:</p>
@@ -168,7 +168,7 @@ export default function CookiePolicy() {
 
                       <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
                         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                          <span className="text-yellow-600">💰</span>
+                          <span className="text-yellow-600">$</span>
                           Advertising Cookies (Optional)
                         </h3>
                         <p className="text-gray-700 mb-3">Enable relevant ads to support our free service:</p>
@@ -185,7 +185,7 @@ export default function CookiePolicy() {
 
                       <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
                         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                          <span className="text-purple-600">⚙️</span>
+                          <span className="text-purple-600">⚙</span>
                           Preference Cookies (Optional)
                         </h3>
                         <p className="text-gray-700 mb-3">Remember your settings and preferences:</p>

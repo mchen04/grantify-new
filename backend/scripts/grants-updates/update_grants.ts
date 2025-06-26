@@ -6,19 +6,19 @@ import winston from 'winston';
 import nodemailer from 'nodemailer';
 
 // Import all API clients
-import { GrantsGovApiClient } from '../../working_apis/grants_gov';
-import { EuFundingApiClient } from '../../working_apis/eu_funding_portal';
-import { NihReporterApiClient } from '../../working_apis/nih_reporter';
-import { NsfAwardsApiClient } from '../../working_apis/nsf_awards';
-import { FederalRegisterApiClient } from '../../working_apis/federal_register';
-import { UsaSpendingApiClient } from '../../working_apis/usaspending';
-import { CanadianOpenGovApiClient } from '../../working_apis/canadian_open_gov';
-import { UkriGatewayApiClient } from '../../working_apis/ukri_gateway';
-import { WorldBankApiClient } from '../../working_apis/world_bank';
-import { CaliforniaGrantsApiClient } from '../../working_apis/california_grants';
-import { NyStateApiClient } from '../../working_apis/ny_state';
-import { SamGovApiClient } from '../../working_apis/sam_gov';
-import { OpenAlexApiClient } from '../../working_apis/openalex';
+import { GrantsGovApiClient } from '../../src/services/api-integrations/clients/GrantsGovApiClient';
+import { EuFundingApiClient } from '../../src/services/api-integrations/clients/EuFundingApiClient';
+import { NihReporterApiClient } from '../../src/services/api-integrations/clients/NihReporterApiClient';
+import { NsfAwardsApiClient } from '../../src/services/api-integrations/clients/NsfAwardsApiClient';
+import { FederalRegisterApiClient } from '../../src/services/api-integrations/clients/FederalRegisterApiClient';
+import { UsaSpendingApiClient } from '../../src/services/api-integrations/clients/UsaspendingApiClient';
+import { CanadianOpenGovApiClient } from '../../src/services/api-integrations/clients/CanadianOpenGovApiClient';
+import { UkriGatewayApiClient } from '../../src/services/api-integrations/clients/UkriGatewayApiClient';
+import { WorldBankApiClient } from '../../src/services/api-integrations/clients/WorldBankApiClient';
+import { CaliforniaGrantsApiClient } from '../../src/services/api-integrations/clients/CaliforniaGrantsApiClient';
+import { NyStateApiClient } from '../../src/services/api-integrations/clients/NyStateApiClient';
+import { SamGovApiClient } from '../../src/services/api-integrations/clients/SamGovApiClient';
+import { OpenAlexApiClient } from '../../src/services/api-integrations/clients/OpenAlexApiClient';
 
 config();
 

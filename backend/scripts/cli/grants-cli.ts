@@ -12,7 +12,7 @@ async function main() {
   const command = args[0];
   const loader = new GrantLoader();
 
-  console.log(chalk.blue('\n🚀 Grant Management CLI\n'));
+  console.log(chalk.blue('\nGrant Management CLI\n'));
 
   try {
     switch (command) {
@@ -43,7 +43,7 @@ async function main() {
     }
   } catch (error) {
     logger.error('Command failed:', error);
-    console.error(chalk.red('\n❌ Command failed. Check logs for details.'));
+    console.error(chalk.red('\nCommand failed. Check logs for details.'));
     process.exit(1);
   }
 }
@@ -56,7 +56,7 @@ async function loadAll(loader: GrantLoader) {
   const duration = Date.now() - startTime;
   
   // Display results
-  console.log(chalk.green('\n✅ Loading Complete!\n'));
+  console.log(chalk.green('\nLoading Complete!\n'));
   console.log(chalk.cyan('Summary by Source:'));
   console.log('─'.repeat(80));
   
@@ -69,7 +69,7 @@ async function loadAll(loader: GrantLoader) {
     totalLoaded += result.loaded + result.updated;
     totalErrors += result.errors;
     
-    const status = result.errors > 0 ? chalk.yellow('⚠') : chalk.green('✓');
+    const status = result.errors > 0 ? chalk.yellow('WARNING') : chalk.green('OK');
     console.log(
       `${status} ${result.source.padEnd(20)} | ` +
       `Total: ${result.total.toString().padStart(6)} | ` +
@@ -98,7 +98,7 @@ async function update(loader: GrantLoader) {
   const duration = Date.now() - startTime;
   
   // Display results
-  console.log(chalk.green('\n✅ Update Complete!\n'));
+  console.log(chalk.green('\nUpdate Complete!\n'));
   console.log(chalk.cyan('Updates by Source:'));
   console.log('─'.repeat(60));
   
@@ -125,7 +125,7 @@ async function showStatus(loader: GrantLoader) {
   
   const stats = await loader.getStats();
   
-  console.log(chalk.cyan('📊 Grant Database Status'));
+  console.log(chalk.cyan('Grant Database Status'));
   console.log('─'.repeat(60));
   console.log(`Total Grants: ${chalk.bold(stats.totalGrants || 0)}`);
   
@@ -175,6 +175,6 @@ function showHelp() {
 // Run the CLI
 main().catch(error => {
   logger.error('Fatal error:', error);
-  console.error(chalk.red('\n❌ Fatal error occurred'));
+  console.error(chalk.red('\nFatal error occurred'));
   process.exit(1);
 });

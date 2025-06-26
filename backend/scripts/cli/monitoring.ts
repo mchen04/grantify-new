@@ -100,7 +100,7 @@ class AlertManager {
     }
 
     if (value > threshold) {
-      const message = `⚠️ Alert: ${apiName} - ${metric} exceeded threshold: ${value} > ${threshold}`;
+      const message = `Alert: ${apiName} - ${metric} exceeded threshold: ${value} > ${threshold}`;
       
       await this.sendAlert({
         title: 'Grant API Alert',

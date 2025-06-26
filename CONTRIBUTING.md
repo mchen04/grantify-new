@@ -43,35 +43,35 @@ Follow the instructions in the main [README.md](./README.md) to set up your deve
 - Include both unit and integration tests where applicable
 - Test accessibility with screen readers
 
-## 📚 Documentation
+## Documentation
 
 - Update README files when adding new features
 - Document API endpoints with clear examples
 - Add JSDoc comments for complex functions
 - Update environment variable documentation
 
-## 🔒 Security
+## Security
 
 - Never commit sensitive data or credentials
 - Use environment variables for configuration
 - Validate and sanitize all user inputs
 - Follow security best practices
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 - Use GitHub Issues to report bugs
 - Include steps to reproduce the issue
 - Provide relevant error messages and logs
 - Specify your environment (OS, Node version, etc.)
 
-## 💡 Suggesting Features
+## Suggesting Features
 
 - Open a GitHub Issue with the "enhancement" label
 - Clearly describe the feature and its benefits
 - Provide use cases and examples
 - Be open to feedback and discussion
 
-## 📋 Pull Request Process
+## Pull Request Process
 
 1. Ensure your code follows the style guidelines
 2. Update documentation as needed
@@ -80,7 +80,7 @@ Follow the instructions in the main [README.md](./README.md) to set up your deve
 5. Update the README.md with details of changes if applicable
 6. Request review from maintainers
 
-## 🤝 Code of Conduct
+## Code of Conduct
 
 - Be respectful and inclusive
 - Welcome newcomers and help them get started
@@ -91,4 +91,4 @@ Follow the instructions in the main [README.md](./README.md) to set up your deve
 
 By contributing to Grantify.ai, you agree that your contributions will be licensed under the MIT License.
 
-Thank you for contributing to Grantify.ai! 🎉
+Thank you for contributing to Grantify.ai!

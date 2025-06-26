@@ -369,7 +369,7 @@ export default function Home() {
                 <div className="bg-white rounded-xl p-8 shadow-lg border-2 border-red-200">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                      <span className="text-2xl">😰</span>
+                      <span className="text-2xl text-red-500">!</span>
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900">Manual Search Reality</h3>
                   </div>
@@ -414,7 +414,7 @@ export default function Home() {
                 <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-8 shadow-lg border-2 border-green-200">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-2xl">🚀</span>
+                      <CheckIcon className="w-6 h-6 text-green-600" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900">With Grantify AI</h3>
                   </div>
@@ -608,8 +608,8 @@ export default function Home() {
                     </tr>
                     <tr>
                       <td className="p-4 font-medium text-gray-900">Context Understanding</td>
-                      <td className="p-4 text-center">❌ Keywords only</td>
-                      <td className="p-4 text-center bg-primary-50 font-semibold text-primary-900">✅ AI understands meaning</td>
+                      <td className="p-4 text-center">Keywords only</td>
+                      <td className="p-4 text-center bg-primary-50 font-semibold text-primary-900">AI understands meaning</td>
                     </tr>
                     <tr>
                       <td className="p-4 font-medium text-gray-900">Grants Found Per Search</td>

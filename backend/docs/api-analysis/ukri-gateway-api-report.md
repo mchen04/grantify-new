@@ -3,7 +3,7 @@
 **API Name**: UKRI Gateway to Research API  
 **Base URL**: `https://gtr.ukri.org/api/projects`  
 **Test Date**: 2025-06-22  
-**Status**: ✅ SUCCESS - Production Ready
+**Status**: SUCCESS - Production Ready
 
 ## Executive Summary
 
@@ -49,19 +49,19 @@ The UKRI Gateway to Research API is fully functional and provides access to over
 ```bash
 curl -X GET "https://gtr.ukri.org/api/projects?page=1&size=3" -H "Accept: application/json"
 ```
-**Result**: ✅ Success - Returns project data with funding details
+**Result**: Success - Returns project data with funding details
 
 ### Test 2: Search Functionality
 ```bash
 curl -X GET "https://gtr.ukri.org/api/projects?q=grant&page=1&size=5" -H "Accept: application/json"
 ```
-**Result**: ✅ Success - Search works with query parameter
+**Result**: Success - Search works with query parameter
 
 ### Test 3: Status Filtering
 ```bash
 curl -X GET "https://gtr.ukri.org/api/projects?status=Active&page=1&size=5" -H "Accept: application/json"
 ```
-**Result**: ✅ Success - However, status filter seems to return all projects (possible API limitation)
+**Result**: Success - However, status filter seems to return all projects (possible API limitation)
 
 ## Data Structure
 

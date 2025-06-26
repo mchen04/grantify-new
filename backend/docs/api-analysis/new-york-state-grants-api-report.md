@@ -3,7 +3,7 @@
 **API Name**: New York State Open Data APIs (data.ny.gov)  
 **Base URL**: `https://data.ny.gov/api/`  
 **Test Date**: 2025-06-22  
-**Status**: ✅ SUCCESS - Limited Grant Data Available
+**Status**: SUCCESS - Limited Grant Data Available
 
 ## Executive Summary
 
@@ -49,19 +49,19 @@ While New York State's Grants Management portal (grantsmanagement.ny.gov) does n
 ```bash
 curl -X GET "https://data.ny.gov/api/views/j5ab-5nj2/rows.json?accessType=DOWNLOAD&$limit=5"
 ```
-**Result**: ✅ Success - Returns grant data with recipient information
+**Result**: Success - Returns grant data with recipient information
 
 ### Test 2: Dataset Metadata
 ```bash
 curl -X GET "https://data.ny.gov/api/views/j5ab-5nj2.json"
 ```
-**Result**: ✅ Success - Provides full dataset schema and metadata
+**Result**: Success - Provides full dataset schema and metadata
 
 ### Test 3: Filtered Query
 ```bash
 curl -X GET "https://data.ny.gov/api/views/j5ab-5nj2/rows.json?$where=fiscal_year_end_date>'2023-01-01'"
 ```
-**Result**: ✅ Success - Filtering works with Socrata query language
+**Result**: Success - Filtering works with Socrata query language
 
 ## Data Structure
 

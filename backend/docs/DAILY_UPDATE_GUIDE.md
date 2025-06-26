@@ -6,12 +6,12 @@ The daily update system automatically fetches new grants and updates existing on
 
 ## Features
 
-- ✅ **Automatic Updates**: Fetches new grants and updates existing ones
-- ✅ **Status Management**: Automatically marks expired grants as closed
-- ✅ **Duplicate Prevention**: Uses source_identifier + data_source_id for deduplication
-- ✅ **Error Handling**: Continues processing even if individual APIs fail
-- ✅ **Detailed Logging**: Generates JSON reports and text logs for each run
-- ✅ **Materialized View Refresh**: Updates the active_opportunities view after each run
+- **Automatic Updates**: Fetches new grants and updates existing ones
+- **Status Management**: Automatically marks expired grants as closed
+- **Duplicate Prevention**: Uses source_identifier + data_source_id for deduplication
+- **Error Handling**: Continues processing even if individual APIs fail
+- **Detailed Logging**: Generates JSON reports and text logs for each run
+- **Materialized View Refresh**: Updates the active_opportunities view after each run
 
 ## APIs Updated
 
