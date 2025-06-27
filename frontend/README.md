@@ -5,7 +5,7 @@ Next.js-based frontend application for the Grantify.ai grant discovery platform.
 ## Features
 
 - **Smart Search**: Full-text grant discovery across 13+ API data sources
-- **Advanced Filtering**: 20+ filter criteria with real-time updates
+- **Optimized Filtering**: Streamlined 6-filter system with inclusive data handling
 - **Smart Recommendations**: Algorithm based on user preferences and interaction history
 - **Responsive Design**: Mobile-first with full touch support
 - **Accessibility**: WCAG 2.1 AA compliant with screen reader optimization
@@ -148,16 +148,21 @@ Recommendations show AI-calculated scores:
 - Agency preferences
 - Category alignment
 
-### Advanced Filtering System
-Comprehensive filter options:
-- **Funding Range**: Min/max amounts with "include no funding" option
-- **Deadline Range**: Date pickers with "include no deadline" and overdue options
-- **Organizations**: Multi-select from 50+ funding organizations
-- **Cost Sharing**: Filter by cost sharing requirements (Yes/No/Both)
-- **Applicant Types**: Filter by eligible applicant categories
-- **Geographic Scope**: Filter by geographic coverage and location
-- **Grant Details**: CFDA numbers, funding instruments, and grant types
-- **Interaction Exclusion**: Hide saved/applied/ignored grants
+### Optimized Filtering System (v1.3.0)
+Streamlined filter options with inclusive data handling:
+- **Funding Range**: Min/max amounts with "include grants without funding data" option
+- **Deadline Range**: Date pickers with "include grants without deadlines" option  
+- **Grant Status**: Active, forecasted, open, closed (defaults to active + forecasted)
+- **Geographic Scope**: Region selection with "include grants without location data" option
+- **Currency**: USD/EUR selection with "include grants without currency data" option
+- **Posted Date**: Filter by grant posting date
+
+**Key Improvements:**
+- Fixed currency filter bug (unchecking currencies now works correctly)
+- Removed ineffective filters (cost sharing, featured, applicant types) 
+- Added data coverage warnings for filters with limited data
+- All filters include "show all" options to prevent data exclusion
+- Cleaner UI with real grant count indicators
 
 ### Accessibility Features
 - **Skip Links**: Jump to main content

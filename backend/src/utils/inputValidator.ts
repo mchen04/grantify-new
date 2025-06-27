@@ -123,19 +123,31 @@ export function validateNumber(input: any, options: NumberOptions = {}): number 
   
   const num = Number(input);
   if (isNaN(num)) {
-    throw new Error('Must be a valid number');
+    if (options.required) {
+      throw new Error('Must be a valid number');
+    }
+    return undefined;
   }
   
   if (options.integer && !Number.isInteger(num)) {
-    throw new Error('Must be an integer');
+    if (options.required) {
+      throw new Error('Must be an integer');
+    }
+    return undefined;
   }
   
   if (options.min !== undefined && num < options.min) {
-    throw new Error(`Must be at least ${options.min}`);
+    if (options.required) {
+      throw new Error(`Must be at least ${options.min}`);
+    }
+    return undefined;
   }
   
   if (options.max !== undefined && num > options.max) {
-    throw new Error(`Must not exceed ${options.max}`);
+    if (options.required) {
+      throw new Error(`Must not exceed ${options.max}`);
+    }
+    return undefined;
   }
   
   return num;
@@ -184,6 +196,7 @@ export function validateArray<T>(
     maxLength?: number;
     minLength?: number;
     required?: boolean;
+    allowPartialValidation?: boolean;
   } = {}
 ): T[] {
   if (!input) {
@@ -208,7 +221,21 @@ export function validateArray<T>(
   }
   
   if (options.maxLength && arrayInput.length > options.maxLength) {
-    throw new Error(`Array must not exceed ${options.maxLength} items`);
+    // Truncate to max length instead of throwing error
+    arrayInput = arrayInput.slice(0, options.maxLength);
+  }
+  
+  if (options.allowPartialValidation) {
+    // Return only valid items, skip invalid ones
+    const results: T[] = [];
+    for (const item of arrayInput) {
+      try {
+        results.push(itemValidator(item));
+      } catch (error) {
+        // Skip invalid items silently
+      }
+    }
+    return results;
   }
   
   return arrayInput.map((item, index) => {
@@ -278,12 +305,15 @@ export function validateGrantFilters(filters: any): any {
   
   // Funding range
   if (filters.funding_min !== undefined) {
-    validated.funding_min = validateNumber(filters.funding_min, { min: 0, max: Number.MAX_SAFE_INTEGER });
+    const fundingMin = validateNumber(filters.funding_min, { min: 0, max: Number.MAX_SAFE_INTEGER });
+    if (fundingMin !== undefined) {
+      validated.funding_min = fundingMin;
+    }
   }
   
   if (filters.funding_max !== undefined) {
     const fundingMax = validateNumber(filters.funding_max, { min: 0, max: Number.MAX_SAFE_INTEGER });
-    if (fundingMax !== undefined && fundingMax < Number.MAX_SAFE_INTEGER) {
+    if (fundingMax !== undefined) {
       validated.funding_max = fundingMax;
     }
   }
@@ -291,7 +321,10 @@ export function validateGrantFilters(filters: any): any {
   // Validate funding range consistency
   if (validated.funding_min !== undefined && validated.funding_max !== undefined) {
     if (validated.funding_min > validated.funding_max) {
-      throw new Error('Funding minimum cannot be greater than funding maximum');
+      // Swap them instead of throwing error
+      const temp = validated.funding_min;
+      validated.funding_min = validated.funding_max;
+      validated.funding_max = temp;
     }
   }
   
@@ -310,6 +343,11 @@ export function validateGrantFilters(filters: any): any {
   
   if (filters.deadline_end !== undefined) {
     validated.deadline_end = validateDate(filters.deadline_end);
+  }
+  
+  // Handle include_no_deadline filter
+  if (filters.include_no_deadline !== undefined) {
+    validated.include_no_deadline = validateBoolean(filters.include_no_deadline);
   }
   
   // Status filter
@@ -354,13 +392,44 @@ export function validateGrantFilters(filters: any): any {
   // Geographic filters
   if (filters.geographic_scope !== undefined) {
     if (Array.isArray(filters.geographic_scope)) {
-      validated.geographic_scope = validateArray(
+      const scopes = validateArray(
         filters.geographic_scope,
-        (item) => validateString(item, { maxLength: 50 }),
+        (item) => {
+          const scope = validateString(item, { maxLength: 50 });
+          // Normalize common case variations
+          if (scope) {
+            const normalized = scope.toLowerCase();
+            if (normalized === 'united states') return 'United States';
+            if (normalized === 'european union') return 'European Union';
+            if (normalized === 'united kingdom') return 'United Kingdom';
+            // Return original with proper case for others
+            return scope.split(' ').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
+          }
+          return scope;
+        },
         { maxLength: 10 }
       );
+      validated.geographic_scope = scopes;
     } else {
-      validated.geographic_scope = validateString(filters.geographic_scope, { maxLength: 50 });
+      const scope = validateString(filters.geographic_scope, { maxLength: 50 });
+      if (scope) {
+        // Normalize common case variations
+        const normalized = scope.toLowerCase();
+        if (normalized === 'united states') {
+          validated.geographic_scope = 'United States';
+        } else if (normalized === 'european union') {
+          validated.geographic_scope = 'European Union';
+        } else if (normalized === 'united kingdom') {
+          validated.geographic_scope = 'United Kingdom';
+        } else {
+          // Return original with proper case for others
+          validated.geographic_scope = scope.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ');
+        }
+      }
     }
   }
   
@@ -427,35 +496,136 @@ export function validateGrantFilters(filters: any): any {
   
   // Pagination
   if (filters.page !== undefined) {
-    validated.page = validateNumber(filters.page, { min: 1, max: 1000, integer: true });
+    const page = validateNumber(filters.page, { min: 1, max: 1000, integer: true });
+    // Default to page 1 if invalid
+    validated.page = page || 1;
   }
   
   if (filters.limit !== undefined) {
-    validated.limit = validateNumber(filters.limit, { min: 1, max: 100, integer: true });
+    const limit = validateNumber(filters.limit, { min: 1, max: 100, integer: true });
+    // Default to 20 if invalid
+    validated.limit = limit || 20;
   }
   
   // User interaction filters
   if (filters.user_id !== undefined) {
-    validated.user_id = validateUUID(filters.user_id);
+    try {
+      validated.user_id = validateUUID(filters.user_id);
+    } catch (e) {
+      // Skip invalid UUID
+    }
   }
   
   if (filters.exclude_interaction_types !== undefined) {
-    validated.exclude_interaction_types = validateArray(
+    const types = validateArray(
       filters.exclude_interaction_types,
-      (item) => {
-        const validTypes = ['saved', 'applied', 'ignored'];
-        const type = validateString(item, { maxLength: 20 });
-        if (type && validTypes.includes(type)) {
-          return type;
-        }
-        throw new Error(`Invalid interaction type: ${type}`);
-      },
+      (item) => validateString(item, { maxLength: 20 }),
       { maxLength: 3 }
     );
+    // Filter to only valid types
+    const validTypes = ['saved', 'applied', 'ignored'];
+    const validatedTypes = types.filter(t => t && validTypes.includes(t));
+    if (validatedTypes.length > 0) {
+      validated.exclude_interaction_types = validatedTypes;
+    }
   }
   
   if (filters.exclude_id !== undefined) {
     validated.exclude_id = validateUUID(filters.exclude_id);
+  }
+  
+  // Currency filter
+  if (filters.currency !== undefined) {
+    if (Array.isArray(filters.currency)) {
+      const validCurrencies = ['USD', 'EUR', 'GBP'];
+      const currencies = [];
+      for (const item of filters.currency) {
+        if (item !== null && item !== undefined) {
+          const currency = validateString(item, { maxLength: 3 })?.toUpperCase();
+          if (currency) {
+            currencies.push(currency);
+          }
+        }
+      }
+      // Filter out invalid currencies instead of throwing error
+      const validatedCurrencies = currencies.filter(c => c && validCurrencies.includes(c));
+      if (validatedCurrencies.length > 0) {
+        validated.currency = validatedCurrencies;
+      }
+    } else {
+      const validCurrencies = ['USD', 'EUR', 'GBP'];
+      const currency = validateString(filters.currency, { maxLength: 3 })?.toUpperCase();
+      if (currency && validCurrencies.includes(currency)) {
+        validated.currency = currency;
+      }
+    }
+  }
+  
+  // Featured filter
+  if (filters.is_featured !== undefined) {
+    validated.is_featured = validateBoolean(filters.is_featured);
+  }
+  
+  // Popularity filters
+  if (filters.min_view_count !== undefined) {
+    validated.min_view_count = validateNumber(filters.min_view_count, { min: 0, integer: true });
+  }
+  
+  if (filters.min_save_count !== undefined) {
+    validated.min_save_count = validateNumber(filters.min_save_count, { min: 0, integer: true });
+  }
+  
+  // Data source IDs filter
+  if (filters.data_sources !== undefined) {
+    const sources = validateArray(
+      filters.data_sources,
+      (item) => validateString(item, { maxLength: 50 }),
+      { maxLength: 20 }
+    );
+    // Filter out invalid/empty values
+    const validSources = sources.filter(s => s && s.trim().length > 0);
+    if (validSources.length > 0) {
+      validated.data_source_ids = validSources;
+    }
+  }
+  
+  // Legacy support for data_source_ids
+  if (filters.data_source_ids !== undefined && filters.data_sources === undefined) {
+    const sources = validateArray(
+      filters.data_source_ids,
+      (item) => validateString(item, { maxLength: 50 }),
+      { maxLength: 20 }
+    );
+    // Filter out invalid/empty values
+    const validSources = sources.filter(s => s && s.trim().length > 0);
+    if (validSources.length > 0) {
+      validated.data_source_ids = validSources;
+    }
+  }
+  
+  // Handle funding_null filter
+  if (filters.funding_null !== undefined) {
+    validated.funding_null = validateBoolean(filters.funding_null);
+  }
+  
+  // Handle deadline_null filter
+  if (filters.deadline_null !== undefined) {
+    validated.deadline_null = validateBoolean(filters.deadline_null);
+  }
+  
+  // Handle show_overdue filter
+  if (filters.show_overdue !== undefined) {
+    validated.show_overdue = validateBoolean(filters.show_overdue);
+  }
+  
+  // Handle include_no_funding filter
+  if (filters.include_no_funding !== undefined) {
+    validated.include_no_funding = validateBoolean(filters.include_no_funding);
+  }
+  
+  // Handle posted date filter (for range)
+  if (filters.posted_date !== undefined) {
+    validated.posted_date = validateString(filters.posted_date, { maxLength: 50 });
   }
   
   return validated;

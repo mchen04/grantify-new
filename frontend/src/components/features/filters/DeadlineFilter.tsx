@@ -6,7 +6,6 @@ interface DeadlineFilterProps {
   deadlineMinDays?: number;
   deadlineMaxDays?: number;
   includeNoDeadline?: boolean;
-  onlyNoDeadline?: boolean;
   showOverdue?: boolean;
   onChange: (changes: any) => void;
 }
@@ -15,17 +14,19 @@ interface DeadlineFilterProps {
  * Simplified deadline filter component
  */
 const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
-  deadlineMinDays = MIN_DEADLINE_DAYS,
-  deadlineMaxDays = MAX_DEADLINE_DAYS,
+  deadlineMinDays,
+  deadlineMaxDays,
   includeNoDeadline = false,
-  onlyNoDeadline = false,
   showOverdue = false,
   onChange
 }) => {
+  // Use default values for display when undefined (means no filter applied)
+  const displayMinDays = deadlineMinDays ?? MIN_DEADLINE_DAYS;
+  const displayMaxDays = deadlineMaxDays ?? MAX_DEADLINE_DAYS;
   const rangeRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
-  const [localDeadlineMinDays, setLocalDeadlineMinDays] = useState(deadlineMinDays);
-  const [localDeadlineMaxDays, setLocalDeadlineMaxDays] = useState(deadlineMaxDays);
+  const [localDeadlineMinDays, setLocalDeadlineMinDays] = useState(displayMinDays);
+  const [localDeadlineMaxDays, setLocalDeadlineMaxDays] = useState(displayMaxDays);
   
   // Create debounced versions of the setters
   const debouncedSetDeadlineMinDays = useMemo(
@@ -44,12 +45,12 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
   
   // Update local state when props change (e.g., from preset buttons)
   useEffect(() => {
-    setLocalDeadlineMinDays(deadlineMinDays);
-  }, [deadlineMinDays]);
+    setLocalDeadlineMinDays(displayMinDays);
+  }, [displayMinDays]);
   
   useEffect(() => {
-    setLocalDeadlineMaxDays(deadlineMaxDays);
-  }, [deadlineMaxDays]);
+    setLocalDeadlineMaxDays(displayMaxDays);
+  }, [displayMaxDays]);
 
   // Format the deadline display text
   const formatDeadlineText = (days: number) => {
@@ -146,7 +147,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
   return (
     <div>
       <div className="text-xs text-gray-600 mb-1">
-        {formatDeadlineText(localDeadlineMinDays)} - {formatDeadlineText(localDeadlineMaxDays)}
+        {deadlineMinDays === undefined && deadlineMaxDays === undefined
+          ? 'Any Deadline'
+          : `${formatDeadlineText(localDeadlineMinDays)} - ${formatDeadlineText(localDeadlineMaxDays)}`
+        }
       </div>
       
       {/* Quick deadline range selection */}
@@ -162,7 +166,6 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
                 setLocalDeadlineMaxDays(preset.max);
                 onChange({ 
                   includeNoDeadline: true,
-                  onlyNoDeadline: false,
                   showOverdue: true, // "Any" should include overdue grants
                   // Don't set deadline date filters for "Any" - let backend include all
                   deadlineMinDays: undefined,
@@ -179,11 +182,11 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
               }
             }}
             className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
-              localDeadlineMinDays === preset.min && localDeadlineMaxDays === preset.max
+              (preset.label === "Any" && deadlineMinDays === undefined && deadlineMaxDays === undefined) ||
+              (preset.label !== "Any" && localDeadlineMinDays === preset.min && localDeadlineMaxDays === preset.max && deadlineMinDays === preset.min && deadlineMaxDays === preset.max)
                 ? 'bg-primary-100 text-primary-800 font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            disabled={onlyNoDeadline}
           >
             {preset.label}
           </button>
@@ -191,7 +194,7 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
       </div>
       
       {/* Slider */}
-      <div className={`${onlyNoDeadline ? 'opacity-50' : ''}`}>
+      <div>
         <div
           ref={rangeRef}
           className="relative w-full h-1.5 bg-gray-200 rounded-lg"
@@ -207,10 +210,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           
           {/* Minimum handle */}
           <div
-            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
+            className="absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm"
             style={{ left: `${minPercentage}%` }}
-            onMouseDown={() => !onlyNoDeadline && setIsDragging('min')}
-            onTouchStart={() => !onlyNoDeadline && setIsDragging('min')}
+            onMouseDown={() => setIsDragging('min')}
+            onTouchStart={() => setIsDragging('min')}
             role="slider"
             aria-valuemin={MIN_DEADLINE_DAYS}
             aria-valuemax={MAX_DEADLINE_DAYS}
@@ -221,10 +224,10 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           
           {/* Maximum handle */}
           <div
-            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoDeadline ? 'cursor-not-allowed' : ''}`}
+            className="absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm"
             style={{ left: `${maxPercentage}%` }}
-            onMouseDown={() => !onlyNoDeadline && setIsDragging('max')}
-            onTouchStart={() => !onlyNoDeadline && setIsDragging('max')}
+            onMouseDown={() => setIsDragging('max')}
+            onTouchStart={() => setIsDragging('max')}
             role="slider"
             aria-valuemin={MIN_DEADLINE_DAYS}
             aria-valuemax={MAX_DEADLINE_DAYS}
@@ -248,7 +251,6 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
             id="include-no-deadline"
             checked={includeNoDeadline}
             onChange={(e) => onChange({ includeNoDeadline: e.target.checked })}
-            disabled={onlyNoDeadline}
             className="form-checkbox h-3 w-3"
           />
           <label htmlFor="include-no-deadline" className="ml-1.5 text-xs text-gray-700">
@@ -256,18 +258,6 @@ const DeadlineFilter: React.FC<DeadlineFilterProps> = React.memo(({
           </label>
         </div>
         
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="only-no-deadline"
-            checked={onlyNoDeadline}
-            onChange={(e) => onChange({ onlyNoDeadline: e.target.checked })}
-            className="form-checkbox h-3 w-3"
-          />
-          <label htmlFor="only-no-deadline" className="ml-1.5 text-xs text-gray-700">
-            Only unspecified
-          </label>
-        </div>
       </div>
     </div>
   );

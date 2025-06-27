@@ -3,6 +3,7 @@ import { Grant, GrantFilter } from '@/types/grant';
 import apiClient from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInteractions } from '@/contexts/InteractionContext';
+import { mapFiltersToApi } from '@/utils/filterMapping';
 
 interface UseFetchGrantsProps {
   filter?: GrantFilter;
@@ -47,77 +48,22 @@ export function useFetchGrants({
       setLoading(true);
       setError(null);
       
-      // Convert filter to API-compatible format
-      const apiFilters: Record<string, any> = {};
+      // Convert filter to API-compatible format using the mapping utility
+      let apiFilters: Record<string, unknown> = {};
+      
+      if (filter) {
+        // Use the mapping utility to convert filters
+        apiFilters = mapFiltersToApi(filter);
+        
+        // Override limit with grantsPerPage
+        apiFilters.limit = grantsPerPage;
+      }
       
       // Add user ID if user is logged in
       if (user) {
         apiFilters.user_id = user.id;
         // Note: excludeInteractedGrants parameter is now ignored - users should see all grants
         // This allows users to interact with grants they've previously interacted with
-      }
-      
-      if (filter) {
-        // Basic filters
-        apiFilters.search = filter.searchTerm;
-        apiFilters.limit = grantsPerPage;
-        apiFilters.page = filter.page;
-        
-        // Data sources filter
-        if (filter.data_source_ids && filter.data_source_ids.length > 0) {
-          apiFilters.data_sources = filter.data_source_ids.join(',');
-        } else if (filter.sources && filter.sources.length > 0) {
-          // Legacy support for 'sources' field
-          apiFilters.data_sources = filter.sources.join(',');
-        }
-        
-        apiFilters.sort_by = filter.sortBy;
-        
-        // Deadline filters
-        if (filter.onlyNoDeadline) {
-          apiFilters.deadline_null = true;
-        } else {
-          // Handle both positive (future) and negative (overdue) deadline days
-          if (filter.deadlineMinDays !== undefined && filter.deadlineMinDays !== 0) {
-            const minDate = new Date();
-            minDate.setDate(minDate.getDate() + filter.deadlineMinDays);
-            apiFilters.deadline_min = minDate.toISOString();
-          }
-          
-          if (filter.deadlineMaxDays !== undefined && filter.deadlineMaxDays < Number.MAX_SAFE_INTEGER) {
-            const maxDate = new Date();
-            maxDate.setDate(maxDate.getDate() + filter.deadlineMaxDays);
-            apiFilters.deadline_max = maxDate.toISOString();
-          }
-          
-          apiFilters.include_no_deadline = filter.includeNoDeadline;
-        }
-        
-        // Funding filters
-        if (filter.onlyNoFunding) {
-          apiFilters.funding_null = true;
-        } else {
-          if (filter.fundingMin > 0) {
-            apiFilters.funding_min = filter.fundingMin;
-          }
-          
-          if (filter.fundingMax < Number.MAX_SAFE_INTEGER) {
-            apiFilters.funding_max = filter.fundingMax;
-          }
-          
-          apiFilters.include_no_funding = filter.includeFundingNull;
-        }
-        
-        // Boolean filters - send when explicitly set to true or false, not when null/undefined
-        if (filter.costSharingRequired !== undefined && filter.costSharingRequired !== null) {
-          apiFilters.cost_sharing = filter.costSharingRequired;
-        }
-        
-        
-        // Show overdue grants filter
-        if (filter.showOverdue !== undefined) {
-          apiFilters.show_overdue = filter.showOverdue;
-        }
       }
       
       // Make the API call using apiClient

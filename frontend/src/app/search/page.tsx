@@ -19,6 +19,7 @@ import {
 } from '@/utils/constants';
 import { DEFAULT_FILTER_STATE, validateFilterState } from '@/utils/filterPresets';
 import { isAuthReady } from '@/utils/authHelpers';
+import { mapFiltersToApi } from '@/utils/filterMapping';
 
 // Components
 import SearchBar from '@/components/features/search/SearchBar';
@@ -165,174 +166,28 @@ function SearchContent() {
 
   // Build API filters from state
   const buildApiFilters = useCallback(() => {
-    const apiFilters: Record<string, any> = {
-      limit: SEARCH_GRANTS_PER_PAGE,
-      page: filter.page,
-      sort_by: filter.sortBy
+    // Create a filter object with the submitted search term
+    const filterWithSearch = {
+      ...filter,
+      searchTerm: submittedSearchTerm
     };
     
-    // Only include search parameter if it's not empty
-    if (submittedSearchTerm && submittedSearchTerm.trim()) {
-      apiFilters.search = submittedSearchTerm;
-    }
+    // Use the mapping utility to convert filters
+    const apiFilters = mapFiltersToApi(filterWithSearch);
+    
+    // Override with page size for search
+    apiFilters.limit = SEARCH_GRANTS_PER_PAGE;
     
     // Always include user_id if available for personalization
     if (user) {
       apiFilters.user_id = user.id;
       // Exclude grants the user has already interacted with from search results
-      apiFilters.exclude_interaction_types = 'saved,applied,ignored';
+      apiFilters.exclude_interaction_types = ['saved', 'applied', 'ignored'];
       console.log('[Search] Building API filters with user:', {
         userId: user.id,
         excludeInteractionTypes: apiFilters.exclude_interaction_types,
         allFilters: apiFilters
       });
-    }
-    
-    // Deadline filters
-    if (filter.onlyNoDeadline) {
-      apiFilters.deadline_null = true;
-    } else {
-      // Calculate deadline dates based on days from today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Set deadline_min based on deadlineMinDays
-      // Always set deadline_min if deadlineMinDays is defined, to handle both positive and negative days
-      if (filter.deadlineMinDays !== undefined) {
-        const minDate = new Date();
-        minDate.setDate(minDate.getDate() + filter.deadlineMinDays);
-        apiFilters.deadline_min = minDate.toISOString();
-      }
-      
-      if (filter.deadlineMaxDays < MAX_DEADLINE_DAYS) {
-        const maxDate = new Date();
-        maxDate.setDate(maxDate.getDate() + filter.deadlineMaxDays);
-        apiFilters.deadline_max = maxDate.toISOString();
-      }
-      
-      apiFilters.include_no_deadline = filter.includeNoDeadline;
-    }
-    
-    // Funding filters
-    if (filter.onlyNoFunding) {
-      apiFilters.funding_null = true;
-    } else {
-      // Always send funding range to ensure proper filtering
-      apiFilters.funding_min = filter.fundingMin || 0;
-      apiFilters.funding_max = filter.fundingMax || MAX_FUNDING;
-      apiFilters.include_no_funding = filter.includeFundingNull;
-    }
-    
-    
-    // Total funding filters
-    if (filter.totalFundingMin) {
-      apiFilters.total_funding_min = filter.totalFundingMin;
-    }
-    if (filter.totalFundingMax) {
-      apiFilters.total_funding_max = filter.totalFundingMax;
-    }
-    
-    // Expected award count
-    if (filter.expectedAwardCountMin) {
-      apiFilters.expected_award_count_min = filter.expectedAwardCountMin;
-    }
-    if (filter.expectedAwardCountMax) {
-      apiFilters.expected_award_count_max = filter.expectedAwardCountMax;
-    }
-    
-    // Date filters
-    if (filter.postDateFrom) {
-      apiFilters.post_date_from = filter.postDateFrom;
-    }
-    if (filter.postDateTo) {
-      apiFilters.post_date_to = filter.postDateTo;
-    }
-    if (filter.loiDueDateFrom) {
-      apiFilters.loi_due_date_from = filter.loiDueDateFrom;
-    }
-    if (filter.loiDueDateTo) {
-      apiFilters.loi_due_date_to = filter.loiDueDateTo;
-    }
-    // Note: earliestStartDate properties removed as they don't exist in GrantFilter type
-    // if (filter.earliestStartDateFrom) {
-    //   apiFilters.earliest_start_date_from = filter.earliestStartDateFrom;
-    // }
-    // if (filter.earliestStartDateTo) {
-    //   apiFilters.earliest_start_date_to = filter.earliestStartDateTo;
-    // }
-    
-    // Project period
-    if (filter.projectPeriodMinYears) {
-      apiFilters.project_period_min_years = filter.projectPeriodMinYears;
-    }
-    if (filter.projectPeriodMaxYears) {
-      apiFilters.project_period_max_years = filter.projectPeriodMaxYears;
-    }
-    
-    // Agency filters (using organizations instead of agencies)
-    if (filter.organizations && filter.organizations.length > 0) {
-      apiFilters.agencies = filter.organizations.join(',');
-    }
-    if (filter.organization_subdivisions && filter.organization_subdivisions.length > 0) {
-      apiFilters.agency_subdivisions = filter.organization_subdivisions.join(',');
-    }
-    if (filter.organization_codes && filter.organization_codes.length > 0) {
-      apiFilters.agency_codes = filter.organization_codes.join(',');
-    }
-    
-    // Grant type filters
-    if (filter.grant_types && filter.grant_types.length > 0) {
-      apiFilters.grant_types = filter.grant_types.join(',');
-    }
-    // Note: activity_codes property doesn't exist in GrantFilter, using activity_categories
-    if (filter.activity_categories && filter.activity_categories.length > 0) {
-      apiFilters.activity_codes = filter.activity_categories.join(',');
-    }
-    if (filter.activity_categories && filter.activity_categories.length > 0) {
-      apiFilters.activity_categories = filter.activity_categories.join(',');
-    }
-    // Note: announcement_types property doesn't exist in GrantFilter
-    // if (filter.announcement_types && filter.announcement_types.length > 0) {
-    //   apiFilters.announcement_types = filter.announcement_types.join(',');
-    // }
-    
-    // Eligibility filters
-    if (filter.eligible_applicant_types && filter.eligible_applicant_types.length > 0) {
-      apiFilters.eligible_applicant_types = filter.eligible_applicant_types.join(',');
-    }
-    if (filter.eligibility_criteria) {
-      apiFilters.eligibility_criteria = filter.eligibility_criteria;
-    }
-    
-    // Content filters
-    if (filter.keywords && filter.keywords.length > 0) {
-      apiFilters.keywords = filter.keywords.join(',');
-    }
-    if (filter.categories && filter.categories.length > 0) {
-      apiFilters.categories = filter.categories.join(',');
-    }
-    
-    // Other filters
-    if (filter.costSharingRequired !== null && filter.costSharingRequired !== undefined) {
-      apiFilters.cost_sharing = filter.costSharingRequired;
-    }
-    // Note: clinicalTrialAllowed property doesn't exist in GrantFilter
-    // if (filter.clinicalTrialAllowed !== null && filter.clinicalTrialAllowed !== undefined) {
-    //   apiFilters.clinical_trial_allowed = filter.clinicalTrialAllowed;
-    // }
-    if (filter.data_source_ids && filter.data_source_ids.length > 0) {
-      apiFilters.data_sources = filter.data_source_ids.join(',');
-    }
-    // Status filters - only use statuses array
-    if (filter.statuses && filter.statuses.length > 0) {
-      // Backend expects 'status' parameter as array for multiple values
-      // Pass the array directly, apiClient will handle it properly
-      apiFilters.status = filter.statuses;
-    }
-    
-    // Show overdue grants filter
-    if (filter.showOverdue !== undefined) {
-      apiFilters.show_overdue = filter.showOverdue;
     }
     
     console.log('[Search] buildApiFilters completed:', {
@@ -342,7 +197,8 @@ function SearchContent() {
       hasStatus: !!apiFilters.status,
       status: apiFilters.status,
       filterStatuses: filter.statuses,
-      filterStatus: filter.status
+      rawFilter: filter,
+      mappedFilters: apiFilters
     });
     
     return apiFilters;

@@ -49,6 +49,61 @@ export class EuFundingApiClient extends BaseApiClient {
     }
   }
 
+  private extractFundingAmount(rawGrant: any): number | undefined {
+    // Try multiple sources for funding information
+    
+    // 1. Check cftEstimatedTotalProcedureValue (most common for tenders)
+    if (rawGrant.metadata?.cftEstimatedTotalProcedureValue?.[0]) {
+      return GrantNormalizer.normalizeAmount(rawGrant.metadata.cftEstimatedTotalProcedureValue[0]);
+    }
+    
+    // 2. Check budgetOverview for grants (contains structured budget data)
+    if (rawGrant.metadata?.budgetOverview?.[0]) {
+      try {
+        const budgetData = JSON.parse(rawGrant.metadata.budgetOverview[0]);
+        // Sum all budget years for total funding
+        let totalBudget = 0;
+        for (const [key, actions] of Object.entries(budgetData.budgetTopicActionMap)) {
+          if (Array.isArray(actions)) {
+            actions.forEach((action: any) => {
+              if (action.budgetYearMap) {
+                Object.values(action.budgetYearMap).forEach((amount: any) => {
+                  totalBudget += Number(amount) || 0;
+                });
+              }
+            });
+          }
+        }
+        if (totalBudget > 0) {
+          return totalBudget;
+        }
+      } catch (e) {
+        // Failed to parse budget overview
+      }
+    }
+    
+    // 3. Check additionalInfos for budget mentions
+    if (rawGrant.metadata?.additionalInfos?.[0]) {
+      try {
+        const infoData = JSON.parse(rawGrant.metadata.additionalInfos[0]);
+        const budgetMatch = infoData.staticAdditionalInfo?.match(/EUR\s*([\d,]+(?:\.\d+)?)\s*(?:million|thousand)?/i);
+        if (budgetMatch) {
+          let amount = parseFloat(budgetMatch[1].replace(/,/g, ''));
+          if (infoData.staticAdditionalInfo.toLowerCase().includes('million')) {
+            amount *= 1000000;
+          } else if (infoData.staticAdditionalInfo.toLowerCase().includes('thousand')) {
+            amount *= 1000;
+          }
+          return amount;
+        }
+      } catch (e) {
+        // Failed to parse additional infos
+      }
+    }
+    
+    return undefined;
+  }
+
   async transformGrant(rawGrant: any): Promise<NormalizedGrantData> {
     const grant = {
       data_source_id: this.dataSourceId!,
@@ -63,9 +118,9 @@ export class EuFundingApiClient extends BaseApiClient {
       
       // Funding
       currency: 'EUR',
-      funding_amount_min: GrantNormalizer.normalizeAmount(rawGrant.minContribution),
-      funding_amount_max: GrantNormalizer.normalizeAmount(rawGrant.maxContribution),
-      total_funding_available: GrantNormalizer.normalizeAmount(rawGrant.budgetTopicCall),
+      funding_amount_min: undefined, // Usually not provided separately
+      funding_amount_max: this.extractFundingAmount(rawGrant),
+      total_funding_available: this.extractFundingAmount(rawGrant),
       
       // Dates
       posted_date: GrantNormalizer.normalizeDate(rawGrant.openingDate),

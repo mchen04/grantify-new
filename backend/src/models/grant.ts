@@ -74,6 +74,9 @@ export interface GrantFilter {
   posted_date_end?: Date | string;
   deadline_start?: Date | string;
   deadline_end?: Date | string;
+  include_no_deadline?: boolean;
+  include_no_funding?: boolean;
+  show_overdue?: boolean;
   
   // Type filters
   grant_type?: string | string[];
@@ -88,6 +91,10 @@ export interface GrantFilter {
   cost_sharing_required?: boolean;
   cfda_numbers?: string | string[];
   opportunity_number?: string;
+  currency?: string | string[];
+  is_featured?: boolean;
+  min_view_count?: number;
+  min_save_count?: number;
   
   // Sorting
   sort_by?: 'posted_date' | 'application_deadline' | 'funding_amount_max' | 'created_at' | 'title';
@@ -97,6 +104,14 @@ export interface GrantFilter {
   user_id?: string;
   exclude_interaction_types?: ('saved' | 'applied' | 'ignored')[];
   exclude_id?: string; // For similar grants
+  
+  // Additional filters for null checks
+  funding_null?: boolean;
+  deadline_null?: boolean;
+  data_source_ids?: string[];
+  
+  // Posted date filter
+  posted_date?: string;
 }
 
 // Simplified Grant Response for API responses

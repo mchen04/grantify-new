@@ -3,6 +3,12 @@ import { BaseApiClient, ApiSyncResult } from '../base/BaseApiClient';
 import { GrantNormalizer, NormalizedGrantData, GrantCategory, GrantKeyword, GrantContact, GrantEligibility } from '../base/GrantNormalizer';
 
 import logger from '../../../utils/logger';
+
+interface ParsedAmountRange {
+  min: number | undefined;
+  max: number | undefined;
+}
+
 export class CaliforniaGrantsApiClient extends BaseApiClient {
   constructor() {
     super({
@@ -10,6 +16,40 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
       baseUrl: 'https://data.ca.gov/api/3/action/datastore_search',
       authType: 'none'
     });
+  }
+
+  /**
+   * Parses amount ranges from California Grants EstAmounts field
+   * Handles formats like:
+   * - "$1,000,000" (single amount)
+   * - "Between $10,000 and $100,000" (range)
+   * - "Between $1 and $2,000,000" (range)
+   */
+  private parseAmountRange(estAmounts: string | undefined): ParsedAmountRange {
+    if (!estAmounts) {
+      return { min: undefined, max: undefined };
+    }
+
+    // Handle "Between X and Y" format
+    const betweenMatch = estAmounts.match(/Between\s+\$([0-9,]+)\s+and\s+\$([0-9,]+)/i);
+    if (betweenMatch) {
+      const minStr = betweenMatch[1].replace(/,/g, '');
+      const maxStr = betweenMatch[2].replace(/,/g, '');
+      return {
+        min: parseFloat(minStr) || undefined,
+        max: parseFloat(maxStr) || undefined
+      };
+    }
+
+    // Handle single amount format "$X"
+    const singleMatch = estAmounts.match(/^\$([0-9,]+)$/);
+    if (singleMatch) {
+      const amount = parseFloat(singleMatch[1].replace(/,/g, '')) || undefined;
+      return { min: amount, max: amount };
+    }
+
+    // Fallback to undefined if no pattern matches
+    return { min: undefined, max: undefined };
   }
 
   async fetchGrants(params: any = {}): Promise<any[]> {
@@ -42,7 +82,7 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
       if (params.sort) {
         searchParams.sort = params.sort;
       } else {
-        searchParams.sort = 'Application Due Date asc';
+        searchParams.sort = 'ApplicationDeadline asc';
       }
 
       const response = await axios.get(this.config.baseUrl, {
@@ -74,8 +114,8 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
     } else {
       // Fallback to date-based status
       const now = new Date();
-      const closeDate = rawGrant['Application Due Date'] || rawGrant.grantCloseDate;
-      const openDate = rawGrant['Open Date'] || rawGrant.grantOpenDate;
+      const closeDate = rawGrant['ApplicationDeadline'];
+      const openDate = rawGrant['OpenDate'];
       
       if (closeDate) {
         const closeDateObj = new Date(closeDate);
@@ -91,32 +131,35 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
       }
     }
 
+    // Parse funding amounts from EstAmounts field
+    const amountRange = this.parseAmountRange(rawGrant['EstAmounts']);
+
     const grant = {
       data_source_id: this.dataSourceId!,
-      source_identifier: rawGrant['Grant ID'] || rawGrant.grantId || rawGrant._id?.toString(),
-      source_url: rawGrant['Resource URL'] || rawGrant.grantDetailsUrl || rawGrant.applyUrl,
-      title: rawGrant['Grant Title'] || rawGrant.title,
+      source_identifier: rawGrant['PortalID'] || rawGrant['GrantID'] || rawGrant._id?.toString(),
+      source_url: rawGrant['GrantURL'],
+      title: rawGrant['Title'],
       status: status,
       
       // Organization
-      funding_organization_name: rawGrant['Agency Name'] || rawGrant.funder,
-      funding_organization_code: rawGrant['Agency Code'] || rawGrant.adminAgency,
+      funding_organization_name: rawGrant['AgencyDept'],
+      funding_organization_code: rawGrant['AgencyCode'],
       
-      // Funding
+      // Funding - Fixed parsing logic
       currency: 'USD',
-      funding_amount_min: GrantNormalizer.normalizeAmount(rawGrant['Estimated Funding Per Award'] || rawGrant.estimatedFundingperAward),
-      funding_amount_max: GrantNormalizer.normalizeAmount(rawGrant['Estimated Funding Per Award'] || rawGrant.estimatedFundingperAward),
-      total_funding_available: GrantNormalizer.normalizeAmount(rawGrant['Fund Amount'] || rawGrant.totalEstimatedFunding),
-      expected_awards_count: parseInt(rawGrant['Estimated Number Of Awards'] || rawGrant.estimatedNumofAwards || '0'),
+      funding_amount_min: amountRange.min,
+      funding_amount_max: amountRange.max,
+      total_funding_available: GrantNormalizer.normalizeAmount(rawGrant['EstAvailFunds']),
+      expected_awards_count: parseInt(rawGrant['EstAwards']?.replace(/[^0-9]/g, '') || '0'),
       
       // Dates
-      posted_date: GrantNormalizer.normalizeDate(rawGrant['Open Date'] || rawGrant.grantOpenDate),
-      application_deadline: GrantNormalizer.normalizeDate(rawGrant['Application Due Date'] || rawGrant.grantCloseDate),
-      last_updated_date: GrantNormalizer.normalizeDate(rawGrant['Last Modified Date']),
+      posted_date: GrantNormalizer.normalizeDate(rawGrant['OpenDate']),
+      application_deadline: GrantNormalizer.normalizeDate(rawGrant['ApplicationDeadline']),
+      last_updated_date: GrantNormalizer.normalizeDate(rawGrant['LastUpdated']),
       
       // Classification
-      grant_type: rawGrant['Loan Or Grant'] || rawGrant.grantType || 'Grant',
-      funding_instrument: rawGrant['Funding Source'] || rawGrant.fundingMethod,
+      grant_type: rawGrant['Type'] || 'Grant',
+      funding_instrument: rawGrant['FundingSource'],
       
       // Raw data
       raw_data: rawGrant
@@ -124,17 +167,24 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
 
     // Details
     const details = {
-      description: rawGrant['Purpose'] || rawGrant.purpose || '',
-      application_process: rawGrant['Application Process'] || rawGrant.applicationProcess,
-      evaluation_criteria: rawGrant['Selection Criteria'] || rawGrant.selectionCriteria,
-      special_requirements: rawGrant['Matching Funds'] || rawGrant.matchingFundsNotes,
+      description: rawGrant['Description'] || '',
+      purpose: rawGrant['Purpose'] || '',
+      application_process: rawGrant['ApplicantTypeNotes'],
+      evaluation_criteria: rawGrant['AwardStats'],
+      special_requirements: rawGrant['MatchingFundsNotes'],
       additional_information: {
-        grant_id: rawGrant['Grant ID'] || rawGrant.grantId,
-        matching_funds_required: rawGrant['Matching Funds'] === 'Yes' || rawGrant.matchingFunds === 'Yes',
-        agency_contact_email: rawGrant['Agency Contact Email'],
-        agency_contact_phone: rawGrant['Agency Contact Phone'],
-        application_url: rawGrant['Resource URL'] || rawGrant.applyUrl,
-        details_url: rawGrant['Grant Details URL'] || rawGrant.grantDetailsUrl
+        grant_id: rawGrant['GrantID'],
+        portal_id: rawGrant['PortalID'],
+        matching_funds_required: rawGrant['MatchingFunds'] === 'Required',
+        funding_method: rawGrant['FundingMethod'],
+        funding_method_notes: rawGrant['FundingMethodNotes'],
+        award_period: rawGrant['AwardPeriod'],
+        expected_award_date: rawGrant['ExpAwardDate'],
+        loi_required: rawGrant['LOI'] === 'Yes',
+        electronic_submission: rawGrant['ElecSubmission'],
+        agency_url: rawGrant['AgencyURL'],
+        grant_events_url: rawGrant['GrantEventsURL'],
+        agency_subscribe_url: rawGrant['AgencySubscribeURL']
       }
     };
 
@@ -150,39 +200,22 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
           });
         }
       });
-    } else if (rawGrant.category) {
-      categories.push({
-        category_type: 'theme' as const,
-        category_name: rawGrant.category
-      });
     }
 
     // Keywords
     const keywords: GrantKeyword[] = [];
-    if (rawGrant.keywords) {
-      const keywordList = Array.isArray(rawGrant.keywords) 
-        ? rawGrant.keywords 
-        : rawGrant.keywords.split(',');
-      
-      keywordList.forEach((keyword: string) => {
-        keywords.push({
-          keyword: keyword.trim(),
-          keyword_source: 'api_provided' as const
-        });
-      });
-    }
-
-    // Extract additional keywords
+    
+    // Extract additional keywords from title and description
     const extractedKeywords = GrantNormalizer.extractKeywords(
-      `${grant.title} ${details.description}`,
+      `${grant.title} ${details.description} ${details.purpose}`,
       'extracted'
     );
     keywords.push(...extractedKeywords);
 
     // Eligibility
     const eligibility: GrantEligibility[] = [];
-    if (rawGrant['Applicant Type Eligibility']) {
-      const applicants = rawGrant['Applicant Type Eligibility'].split(',').map((a: string) => a.trim());
+    if (rawGrant['ApplicantType']) {
+      const applicants = rawGrant['ApplicantType'].split(';').map((a: string) => a.trim());
       applicants.forEach((applicant: string) => {
         if (applicant) {
           eligibility.push({
@@ -192,26 +225,22 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
           });
         }
       });
-    } else if (rawGrant.eligibleApplicants) {
-      const applicants = Array.isArray(rawGrant.eligibleApplicants) 
-        ? rawGrant.eligibleApplicants 
-        : [rawGrant.eligibleApplicants];
-      
-      applicants.forEach((applicant: string) => {
-        eligibility.push({
-          eligibility_type: 'organization_type' as const,
-          eligibility_value: applicant,
-          is_required: true
-        });
+    }
+
+    // Additional eligibility from notes
+    if (rawGrant['ApplicantTypeNotes']) {
+      eligibility.push({
+        eligibility_type: 'other' as const,
+        eligibility_description: rawGrant['ApplicantTypeNotes'],
+        is_required: false
       });
     }
 
     // Geographic eligibility
-    const geoEligibility = rawGrant['Geographic Eligibility'] || rawGrant.geographicEligibility;
-    if (geoEligibility) {
+    if (rawGrant['Geography']) {
       eligibility.push({
         eligibility_type: 'geographic' as const,
-        eligibility_value: geoEligibility,
+        eligibility_value: rawGrant['Geography'],
         eligibility_description: 'Geographic areas eligible for this grant',
         is_required: true
       });
@@ -219,13 +248,13 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
 
     // Locations
     const locations = [];
-    const geoDesc = rawGrant['Geographic Eligibility'] || rawGrant.geographicEligibility;
-    if (geoDesc && geoDesc !== 'Statewide') {
+    const geography = rawGrant['Geography'];
+    if (geography && geography !== 'Statewide') {
       locations.push({
         location_type: 'eligible' as const,
         country_code: 'US',
         state_province: 'CA',
-        geographic_description: geoDesc
+        geographic_description: geography
       });
     } else {
       locations.push({
@@ -238,35 +267,37 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
 
     // Contacts
     const contacts: GrantContact[] = [];
-    if (rawGrant['Agency Contact Email'] || rawGrant['Agency Contact Phone']) {
+    if (rawGrant['ContactInfo']) {
+      // Parse contact info which may contain name, email, phone
+      const contactInfo = rawGrant['ContactInfo'];
+      const emailMatch = contactInfo.match(/email:\s*([^\s;,]+)/i);
+      const phoneMatch = contactInfo.match(/tel:\s*([^\s;,]+)/i);
+      const nameMatch = contactInfo.match(/name:\s*([^;,]+)/i);
+      
       contacts.push({
         contact_type: 'general' as const,
-        email: rawGrant['Agency Contact Email'],
-        phone: rawGrant['Agency Contact Phone'],
-        organization: rawGrant['Agency Name'] || rawGrant.funder
-      });
-    } else if (rawGrant.contactInfo) {
-      contacts.push({
-        contact_type: 'general' as const,
-        notes: rawGrant.contactInfo,
-        organization: rawGrant.funder
+        contact_name: nameMatch ? nameMatch[1].trim() : undefined,
+        email: emailMatch ? emailMatch[1].trim() : undefined,
+        phone: phoneMatch ? phoneMatch[1].trim() : undefined,
+        notes: contactInfo,
+        organization: rawGrant['AgencyDept']
       });
     }
 
     // Documents
     const documents = [];
-    if (rawGrant.grantDetailsUrl) {
+    if (rawGrant['GrantURL']) {
       documents.push({
         document_type: 'guidelines' as const,
         document_name: 'Grant Details',
-        document_url: rawGrant.grantDetailsUrl
+        document_url: rawGrant['GrantURL']
       });
     }
-    if (rawGrant.applyUrl && rawGrant.applyUrl !== rawGrant.grantDetailsUrl) {
+    if (rawGrant['AgencyURL']) {
       documents.push({
-        document_type: 'application_form' as const,
-        document_name: 'Application Portal',
-        document_url: rawGrant.applyUrl
+        document_type: 'other' as const,
+        document_name: 'Agency Website',
+        document_url: rawGrant['AgencyURL']
       });
     }
 
@@ -363,8 +394,8 @@ export class CaliforniaGrantsApiClient extends BaseApiClient {
 
             } catch (error: any) {
               result.recordsFailed++;
-              result.errors.push(`Grant ${rawGrant.grantId}: ${error.message}`);
-              logger.error(`Failed to process California grant ${rawGrant.grantId}`, error);
+              result.errors.push(`Grant ${rawGrant.PortalID || rawGrant._id}: ${error.message}`);
+              logger.error(`Failed to process California grant ${rawGrant.PortalID || rawGrant._id}`, error);
             }
           }
 

@@ -132,9 +132,30 @@ export class GrantNormalizer {
   static normalizeAmount(amount: any): number | undefined {
     if (!amount) return undefined;
     
-    // Handle string amounts with currency symbols
+    // Handle string amounts with currency symbols and commas
     if (typeof amount === 'string') {
-      const cleaned = amount.replace(/[^0-9.-]/g, '');
+      // First remove currency symbols and spaces, but keep commas, dots, and numbers
+      let cleaned = amount.replace(/[^0-9,.-]/g, '');
+      
+      // Handle comma as thousands separator (e.g., "1,000,000")
+      if (cleaned.includes(',')) {
+        // If there's a dot after commas, it's likely European format (1.234.567,89)
+        // Otherwise, it's likely US format (1,234,567.89)
+        const lastCommaIndex = cleaned.lastIndexOf(',');
+        const lastDotIndex = cleaned.lastIndexOf('.');
+        
+        if (lastDotIndex > lastCommaIndex) {
+          // US format: comma is thousands separator
+          cleaned = cleaned.replace(/,/g, '');
+        } else if (lastCommaIndex > lastDotIndex) {
+          // European format: comma is decimal separator
+          cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+        } else {
+          // Only commas, assume thousands separator
+          cleaned = cleaned.replace(/,/g, '');
+        }
+      }
+      
       const parsed = parseFloat(cleaned);
       return isNaN(parsed) ? undefined : parsed;
     }

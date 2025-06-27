@@ -3,13 +3,12 @@ import { debounce } from '@/utils/debounce';
 import { MAX_FUNDING } from '@/utils/constants';
 
 interface FundingRangeFilterProps {
-  fundingMin: number;
-  fundingMax: number;
+  fundingMin?: number;
+  fundingMax?: number;
   includeFundingNull: boolean;
-  onlyNoFunding: boolean;
-  setFundingMin: (value: number) => void;
-  setFundingMax: (value: number) => void;
-  handleFundingOptionChange: (option: 'include' | 'only', checked: boolean) => void;
+  setFundingMin: (value: number | undefined) => void;
+  setFundingMax: (value: number | undefined) => void;
+  handleFundingOptionChange: (option: 'include', checked: boolean) => void;
 }
 
 /**
@@ -19,15 +18,17 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
   fundingMin,
   fundingMax,
   includeFundingNull,
-  onlyNoFunding,
   setFundingMin,
   setFundingMax,
   handleFundingOptionChange
 }) => {
+  // Use default values for display when undefined (means no filter applied)
+  const displayFundingMin = fundingMin ?? 0;
+  const displayFundingMax = fundingMax ?? MAX_FUNDING;
   const rangeRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
-  const [localFundingMin, setLocalFundingMin] = useState(fundingMin);
-  const [localFundingMax, setLocalFundingMax] = useState(fundingMax);
+  const [localFundingMin, setLocalFundingMin] = useState(displayFundingMin);
+  const [localFundingMax, setLocalFundingMax] = useState(displayFundingMax);
   
   // Create debounced versions of the setters
   const debouncedSetFundingMin = useMemo(
@@ -46,12 +47,12 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
   
   // Update local state when props change (e.g., from preset buttons)
   useEffect(() => {
-    setLocalFundingMin(fundingMin);
-  }, [fundingMin]);
+    setLocalFundingMin(displayFundingMin);
+  }, [displayFundingMin]);
   
   useEffect(() => {
-    setLocalFundingMax(fundingMax);
-  }, [fundingMax]);
+    setLocalFundingMax(displayFundingMax);
+  }, [displayFundingMax]);
   
   // Format currency for display
   const formatCurrency = (amount: number) => {
@@ -138,7 +139,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
   return (
     <div>
       <div className="text-xs text-gray-600 mb-1">
-        ${formatCurrency(localFundingMin)} - ${formatCurrency(localFundingMax)}
+        {fundingMin === undefined && fundingMax === undefined 
+          ? 'Any Amount'
+          : `$${formatCurrency(localFundingMin)} - $${formatCurrency(localFundingMax)}`
+        }
       </div>
       
       {/* Quick funding range selection */}
@@ -149,21 +153,27 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
             type="button"
             onClick={() => {
               // Update both local and parent state immediately for preset buttons
-              setLocalFundingMin(preset.min);
-              setLocalFundingMax(preset.max);
-              setFundingMin(preset.min);
-              setFundingMax(preset.max);
               if (preset.label === "Any") {
+                // For "Any", clear funding filters entirely
+                setLocalFundingMin(preset.min);
+                setLocalFundingMax(preset.max);
+                setFundingMin(undefined);
+                setFundingMax(undefined);
                 handleFundingOptionChange('include', true);
-                handleFundingOptionChange('only', false);
+              } else {
+                // For other presets, set specific values
+                setLocalFundingMin(preset.min);
+                setLocalFundingMax(preset.max);
+                setFundingMin(preset.min);
+                setFundingMax(preset.max);
               }
             }}
             className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
-              localFundingMin === preset.min && localFundingMax === preset.max
+              (preset.label === "Any" && fundingMin === undefined && fundingMax === undefined) ||
+              (preset.label !== "Any" && localFundingMin === preset.min && localFundingMax === preset.max && fundingMin === preset.min && fundingMax === preset.max)
                 ? 'bg-primary-100 text-primary-800 font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            disabled={onlyNoFunding}
           >
             {preset.label}
           </button>
@@ -171,7 +181,7 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
       </div>
       
       {/* Slider */}
-      <div className={`${onlyNoFunding ? 'opacity-50' : ''}`}>
+      <div>
         <div
           ref={rangeRef}
           className="relative w-full h-1.5 bg-gray-200 rounded-lg"
@@ -187,10 +197,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
           
           {/* Minimum handle */}
           <div
-            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
+            className="absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm"
             style={{ left: `${minPercentage}%` }}
-            onMouseDown={() => !onlyNoFunding && setIsDragging('min')}
-            onTouchStart={() => !onlyNoFunding && setIsDragging('min')}
+            onMouseDown={() => setIsDragging('min')}
+            onTouchStart={() => setIsDragging('min')}
             role="slider"
             aria-valuemin={0}
             aria-valuemax={MAX_FUNDING}
@@ -201,10 +211,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
           
           {/* Maximum handle */}
           <div
-            className={`absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm ${onlyNoFunding ? 'cursor-not-allowed' : ''}`}
+            className="absolute w-3 h-3 bg-white border-2 border-primary-500 rounded-full -mt-0.5 -ml-1.5 cursor-pointer shadow-sm"
             style={{ left: `${maxPercentage}%` }}
-            onMouseDown={() => !onlyNoFunding && setIsDragging('max')}
-            onTouchStart={() => !onlyNoFunding && setIsDragging('max')}
+            onMouseDown={() => setIsDragging('max')}
+            onTouchStart={() => setIsDragging('max')}
             role="slider"
             aria-valuemin={0}
             aria-valuemax={MAX_FUNDING}
@@ -228,23 +238,10 @@ const FundingRangeFilter: React.FC<FundingRangeFilterProps> = React.memo(({
             id="include-no-funding"
             checked={includeFundingNull}
             onChange={(e) => handleFundingOptionChange('include', e.target.checked)}
-            disabled={onlyNoFunding}
             className="form-checkbox h-3 w-3"
           />
           <label htmlFor="include-no-funding" className="ml-1.5 text-xs text-gray-700">
             Include unspecified
-          </label>
-        </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="only-no-funding"
-            checked={onlyNoFunding}
-            onChange={(e) => handleFundingOptionChange('only', e.target.checked)}
-            className="form-checkbox h-3 w-3"
-          />
-          <label htmlFor="only-no-funding" className="ml-1.5 text-xs text-gray-700">
-            Only unspecified
           </label>
         </div>
       </div>

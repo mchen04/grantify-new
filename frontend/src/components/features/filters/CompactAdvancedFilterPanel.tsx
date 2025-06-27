@@ -45,7 +45,14 @@ export default function CompactAdvancedFilterPanel({
   };
 
   const resetAllFilters = () => {
-    setPendingFilters(DEFAULT_FILTER_STATE as GrantFilter);
+    const resetState = {
+      ...DEFAULT_FILTER_STATE,
+      searchTerm: pendingFilters.searchTerm, // Keep the search term
+      page: pendingFilters.page // Keep the current page
+    } as GrantFilter;
+    setPendingFilters(resetState);
+    // Apply the reset immediately
+    onFilterChange(resetState);
   };
 
   const handleApply = async () => {
@@ -70,21 +77,18 @@ export default function CompactAdvancedFilterPanel({
   // Count active filters in pending state
   const activeFilterCount = () => {
     let count = 0;
-    // Funding filters
-    if (pendingFilters.fundingMin && pendingFilters.fundingMin > 0) count++;
-    if (pendingFilters.fundingMax && pendingFilters.fundingMax < 10000000) count++;
-    if (!pendingFilters.includeFundingNull) count++;
+    // Funding filters - only count if different from default (undefined means no filter)
+    if (pendingFilters.fundingMin !== undefined && pendingFilters.fundingMin > 0) count++;
+    if (pendingFilters.fundingMax !== undefined && pendingFilters.fundingMax < 100000000) count++;
     if (pendingFilters.onlyNoFunding) count++;
     
-    // Deadline filters
-    if (pendingFilters.deadlineMinDays && pendingFilters.deadlineMinDays > 0) count++;
-    if (pendingFilters.deadlineMaxDays && pendingFilters.deadlineMaxDays < 365) count++;
-    if (!pendingFilters.includeNoDeadline) count++;
+    // Deadline filters - only count if different from default (undefined means no filter)
+    if (pendingFilters.deadlineMinDays !== undefined) count++;
+    if (pendingFilters.deadlineMaxDays !== undefined) count++;
     if (pendingFilters.onlyNoDeadline) count++;
-    if (pendingFilters.showOverdue) count++;
     
     // Status filters - count if different from default
-    const defaultStatuses = ['active', 'open'];
+    const defaultStatuses = ['active', 'forecasted'];
     if (pendingFilters.statuses?.length && 
         (pendingFilters.statuses.length !== defaultStatuses.length || 
          !pendingFilters.statuses.every(s => defaultStatuses.includes(s)))) {
@@ -93,13 +97,25 @@ export default function CompactAdvancedFilterPanel({
     
     // Organization filters
     if (pendingFilters.organizations?.length) count++;
-    if (pendingFilters.data_source_ids?.length) count++;
+    if (pendingFilters.data_source_ids !== undefined && pendingFilters.data_source_ids.length > 0) count++;
     
     // Type and category filters  
-    if (pendingFilters.eligible_applicant_types?.length) count++;
+    if (pendingFilters.eligible_applicant_types !== undefined && pendingFilters.eligible_applicant_types.length > 0) count++;
     
-    // Boolean filters
-    if (pendingFilters.costSharingRequired !== null && pendingFilters.costSharingRequired !== undefined) count++;
+    // Boolean filters - costSharingRequired REMOVED (all grants same value)
+    
+    // Geographic filters
+    if (pendingFilters.geographic_scope) count++;
+    if (pendingFilters.includeNoGeographicScope === false) count++; // Only count if explicitly excluding
+    
+    // Currency filters - count if not all are selected (undefined means all)
+    const allAvailableCurrencies = ['USD', 'EUR'];
+    if (pendingFilters.currencies !== undefined && pendingFilters.currencies.length !== allAvailableCurrencies.length) count++;
+    if (pendingFilters.includeNoCurrency === false) count++; // Only count if explicitly excluding
+    
+    // Special filters
+    if (pendingFilters.onlyFeatured) count++;
+    if (pendingFilters.postDateFrom) count++;
     
     return count;
   };
@@ -119,6 +135,7 @@ export default function CompactAdvancedFilterPanel({
       )}
       
       <div className="max-w-6xl mx-auto">
+
         {/* Inline Sort Section */}
         <div className="flex items-center gap-3 mb-3">
           <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Sort by:</label>
@@ -138,58 +155,63 @@ export default function CompactAdvancedFilterPanel({
           </select>
         </div>
 
-        {/* Main Filter Grid - More columns for dense layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3">
-          {/* Funding Range */}
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Funding Amount</h4>
+        {/* Main Filter Grid - Optimized for 5 effective filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
+          {/* Funding Range - WITH MISSING DATA OPTION */}
+          <div className="border border-yellow-200 rounded-lg p-3 bg-yellow-50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">💰 Funding Amount</h4>
+            <div className="text-xs text-amber-600 mb-2 bg-amber-100 p-2 rounded">
+              ⚠️ Only 8% of grants (308/3,874) have funding amount data
+            </div>
             <FundingRangeFilter
-              fundingMin={pendingFilters.fundingMin || 0}
-              fundingMax={pendingFilters.fundingMax || 10000000}
-              includeFundingNull={pendingFilters.includeFundingNull || false}
-              onlyNoFunding={pendingFilters.onlyNoFunding || false}
+              fundingMin={pendingFilters.fundingMin}
+              fundingMax={pendingFilters.fundingMax}
+              includeFundingNull={pendingFilters.includeFundingNull ?? true}
               setFundingMin={(value) => handleFilterChange({ fundingMin: value })}
               setFundingMax={(value) => handleFilterChange({ fundingMax: value })}
               handleFundingOptionChange={(option, checked) => {
-                if (option === 'include') {
-                  handleFilterChange({ includeFundingNull: checked });
-                } else if (option === 'only') {
-                  handleFilterChange({ onlyNoFunding: checked });
-                }
+                handleFilterChange({ includeFundingNull: checked });
               }}
             />
+            <div className="text-xs text-gray-500 mt-1">
+              {pendingFilters.includeFundingNull !== false ? "Including grants without funding data (3,566 grants)" : "Funding-specific grants only (308 grants)"}
+            </div>
           </div>
 
-          {/* Deadline */}
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Application Deadline</h4>
+          {/* Deadline - WITH MISSING DATA OPTION */}
+          <div className="border border-yellow-200 rounded-lg p-3 bg-yellow-50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">📅 Application Deadline</h4>
+            <div className="text-xs text-amber-600 mb-2 bg-amber-100 p-2 rounded">
+              ⚠️ 46% coverage (1,777/3,874 grants have deadline data)
+            </div>
             <DeadlineFilter
               deadlineMinDays={pendingFilters.deadlineMinDays}
               deadlineMaxDays={pendingFilters.deadlineMaxDays}
-              includeNoDeadline={pendingFilters.includeNoDeadline}
-              onlyNoDeadline={pendingFilters.onlyNoDeadline}
+              includeNoDeadline={pendingFilters.includeNoDeadline ?? true}
               showOverdue={pendingFilters.showOverdue}
               onChange={(deadline) => handleFilterChange(deadline)}
             />
+            <div className="text-xs text-gray-500 mt-1">
+              {pendingFilters.includeNoDeadline !== false ? "Including grants without deadlines (2,097 grants)" : "Deadline-specific grants only (1,777 grants)"}
+            </div>
           </div>
 
-          {/* Grant Status */}
+          {/* Grant Status - SIMPLIFIED */}
           <div className="border border-gray-200 rounded-lg p-3">
             <h4 className="text-sm font-semibold text-gray-900 mb-2">Grant Status</h4>
             <div className="space-y-1">
               {[
-                { value: 'active', label: 'Active' },
-                { value: 'open', label: 'Open' },
-                { value: 'forecasted', label: 'Forecasted' },
-                { value: 'closed', label: 'Closed' },
-                { value: 'archived', label: 'Archived' }
+                { value: 'active', label: 'Active (2,067)', count: 2067 },
+                { value: 'forecasted', label: 'Forecasted (1,161)', count: 1161 },
+                { value: 'open', label: 'Open (180)', count: 180 },
+                { value: 'closed', label: 'Closed (466)', count: 466 }
               ].map((status) => (
                 <label key={status.value} className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={pendingFilters.statuses?.includes(status.value) || false}
+                    checked={pendingFilters.statuses?.includes(status.value) ?? (['active', 'forecasted'].includes(status.value))}
                     onChange={(e) => {
-                      const current = pendingFilters.statuses || [];
+                      const current = pendingFilters.statuses || ['active', 'forecasted'];
                       const updated = e.target.checked
                         ? [...current, status.value]
                         : current.filter(s => s !== status.value);
@@ -201,81 +223,121 @@ export default function CompactAdvancedFilterPanel({
                 </label>
               ))}
             </div>
+            <div className="text-xs text-gray-500 mt-1">Numbers show available grants</div>
           </div>
 
-          {/* Requirements */}
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Requirements</h4>
-            
-            {/* Cost Sharing */}
-            <div className="mb-2">
-              <label className="text-xs text-gray-600 mb-1 block">Cost Sharing</label>
-              <div className="flex gap-1">
-                {[
-                  { value: null, label: 'Both' },
-                  { value: true, label: 'Yes' },
-                  { value: false, label: 'No' }
-                ].map((option) => (
-                  <button
-                    key={String(option.value)}
-                    onClick={() => handleFilterChange({ costSharingRequired: option.value })}
-                    className={`px-2 py-1 text-xs rounded transition-all border font-medium ${
-                      pendingFilters.costSharingRequired === option.value
-                        ? 'bg-primary-100 text-primary-700 border-primary-300'
-                        : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Cost Sharing Filter REMOVED - All grants have same value (false) */}
 
-            {/* Eligibility */}
-            {availableOptions.applicantTypes && availableOptions.applicantTypes.length > 0 && (
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Applicant Types</label>
-                <select
-                  value={pendingFilters.eligible_applicant_types?.[0] || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    handleFilterChange({ 
-                      eligible_applicant_types: value ? [value] : [] 
-                    });
-                  }}
-                  className="form-select w-full text-xs py-1 px-2"
-                >
-                  <option value="">All Types</option>
-                  {availableOptions.applicantTypes.slice(0, 10).map((type) => (
-                    <option key={type} value={type}>
-                      {type.length > 20 ? type.substring(0, 20) + '...' : type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
+          {/* Data Sources - REMOVED: Poor UX with UUIDs */}
 
-          {/* Data Sources */}
+          {/* Geographic Scope - WITH MISSING DATA OPTION */}
           <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Data Sources</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">🌍 Geographic Scope</h4>
             <select
-              value={pendingFilters.data_source_ids?.[0] || ''}
+              value={pendingFilters.geographic_scope || ''}
               onChange={(e) => {
                 const value = e.target.value;
                 handleFilterChange({ 
-                  data_source_ids: value ? [value] : [] 
+                  geographic_scope: value || undefined 
                 });
+              }}
+              className="form-select w-full text-xs py-1 px-2 mb-2"
+            >
+              <option value="">All Locations (3,874)</option>
+              <option value="United States">United States (2,142)</option>
+              <option value="European Union">European Union (1,037)</option>
+              <option value="Global">Global (695)</option>
+            </select>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={pendingFilters.includeNoGeographicScope ?? true}
+                onChange={(e) => handleFilterChange({ includeNoGeographicScope: e.target.checked })}
+                className="form-checkbox h-3 w-3 text-primary-600 rounded mr-1.5"
+              />
+              <span className="text-xs text-gray-700">Include grants without location data (280 grants)</span>
+            </label>
+            <div className="text-xs text-gray-500 mt-1">
+              {pendingFilters.includeNoGeographicScope !== false ? "Showing all 3,874 grants" : "Filtered to located grants only"}
+            </div>
+          </div>
+
+          {/* Currency Filter - WITH MISSING DATA OPTION */}
+          <div className="border border-yellow-200 rounded-lg p-3 bg-yellow-50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">💱 Currency</h4>
+            <div className="text-xs text-amber-600 mb-2 bg-amber-100 p-2 rounded">
+              ⚠️ Only 26% coverage (1,000/3,874 grants have currency data)
+            </div>
+            <div className="space-y-1 mb-2">
+              {[
+                { value: 'USD', label: 'USD ($) - 619 grants' },
+                { value: 'EUR', label: 'EUR (€) - 381 grants' }
+              ].map((currency) => (
+                <label key={currency.value} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={pendingFilters.currencies?.includes(currency.value) ?? true}
+                    onChange={(e) => {
+                      const allAvailableCurrencies = ['USD', 'EUR']; // Only currencies that exist in database
+                      const current = pendingFilters.currencies ?? allAvailableCurrencies;
+                      const updated = e.target.checked
+                        ? [...new Set([...current, currency.value])]
+                        : current.filter(c => c !== currency.value);
+                      
+                      // If all available currencies are selected, set to undefined (meaning "all")
+                      const isAllAvailableSelected = allAvailableCurrencies.every(c => updated.includes(c));
+                      handleFilterChange({ currencies: isAllAvailableSelected ? undefined : updated });
+                    }}
+                    className="form-checkbox h-3 w-3 text-primary-600 rounded"
+                  />
+                  <span className="ml-1.5 text-xs text-gray-700">{currency.label}</span>
+                </label>
+              ))}
+            </div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={pendingFilters.includeNoCurrency ?? true}
+                onChange={(e) => handleFilterChange({ includeNoCurrency: e.target.checked })}
+                className="form-checkbox h-3 w-3 text-primary-600 rounded mr-1.5"
+              />
+              <span className="text-xs text-gray-700">Include grants without currency data (2,874 grants)</span>
+            </label>
+            <div className="text-xs text-gray-500 mt-1">
+              {pendingFilters.includeNoCurrency !== false ? "Showing all grants" : "Currency-specific grants only"}
+            </div>
+          </div>
+
+          {/* Posted Date Filter - FUNCTIONAL */}
+          <div className="border border-blue-200 rounded-lg p-3 bg-blue-50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">📅 Posted Date</h4>
+            <select
+              value={(() => {
+                if (!pendingFilters.postDateFrom) return '';
+                const days = Math.floor((new Date().getTime() - new Date(pendingFilters.postDateFrom).getTime()) / (1000 * 60 * 60 * 24));
+                if (days <= 7) return '7';
+                if (days <= 30) return '30';
+                if (days <= 90) return '90';
+                return '';
+              })()}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value) {
+                  const date = new Date();
+                  date.setDate(date.getDate() - parseInt(value));
+                  handleFilterChange({ postDateFrom: date.toISOString() });
+                } else {
+                  handleFilterChange({ postDateFrom: undefined });
+                }
               }}
               className="form-select w-full text-xs py-1 px-2"
             >
-              <option value="">All Sources</option>
-              <option value="NIH">NIH</option>
-              <option value="NSF">NSF</option>
-              <option value="DOE">DOE</option>
-              <option value="USDA">USDA</option>
-              <option value="NASA">NASA</option>
+              <option value="">Any Time (3,874)</option>
+              <option value="7">Last 7 days (~50)</option>
+              <option value="30">Last 30 days (~200)</option>
+              <option value="90">Last 90 days (~600)</option>
             </select>
+            <div className="text-xs text-blue-600 mt-1">Estimates based on posting patterns</div>
           </div>
         </div>
 

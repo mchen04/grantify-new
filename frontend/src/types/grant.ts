@@ -50,8 +50,8 @@ export interface GrantFilter {
   // Search
   searchTerm: string;
   // Funding filters
-  fundingMin: number;
-  fundingMax: number;
+  fundingMin?: number;
+  fundingMax?: number;
   includeFundingNull: boolean;
   onlyNoFunding: boolean;
   totalFundingMin?: number;
@@ -59,8 +59,8 @@ export interface GrantFilter {
   expectedAwardCountMin?: number;
   expectedAwardCountMax?: number;
   // Date filters
-  deadlineMinDays: number;
-  deadlineMaxDays: number;
+  deadlineMinDays?: number;
+  deadlineMaxDays?: number;
   includeNoDeadline: boolean;
   onlyNoDeadline: boolean;
   showOverdue?: boolean;
@@ -85,11 +85,13 @@ export interface GrantFilter {
   cfda_numbers?: string[];
   activity_categories?: string[];
   funding_instruments?: string[];
+  opportunity_number?: string;
   // Eligibility filters
   eligible_applicant_types?: string[];
   eligibility_criteria?: string;
   // Geographic filters
   geographic_scope?: string;
+  includeNoGeographicScope?: boolean;
   countries?: string[];
   states?: string[];
   // Content filters
@@ -100,6 +102,13 @@ export interface GrantFilter {
   statuses?: string[];
   sources?: string[];
   data_source_ids?: string[];
+  // Currency filter
+  currencies?: string[];
+  includeNoCurrency?: boolean;
+  // Featured/popularity filters
+  onlyFeatured?: boolean;
+  minViewCount?: number;
+  minSaveCount?: number;
   // Pagination and sorting
   sortBy: string;
   page: number;

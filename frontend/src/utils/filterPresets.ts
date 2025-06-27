@@ -55,27 +55,37 @@ export const FILTER_PRESETS = {
 // Default filter state - single source of truth
 export const DEFAULT_FILTER_STATE: Partial<GrantFilter> = {
   searchTerm: '',
-  fundingMin: 0,
-  fundingMax: MAX_FUNDING,
+  // Don't apply funding filters by default to show all grants
+  // fundingMin and fundingMax undefined means "Any" funding amount
+  fundingMin: undefined,
+  fundingMax: undefined,
   includeFundingNull: true,
   onlyNoFunding: false,
-  deadlineMinDays: 0, // Start from today, not overdue grants
-  deadlineMaxDays: MAX_DEADLINE_DAYS,
+  // Don't apply ANY deadline filters by default - show ALL grants  
+  // deadlineMinDays and deadlineMaxDays undefined means "Any" deadline
+  deadlineMinDays: undefined,
+  deadlineMaxDays: undefined,
   includeNoDeadline: true,
   onlyNoDeadline: false,
-  showOverdue: false, // Don't show overdue grants by default
+  showOverdue: true, // Show overdue grants by default to see all grants
   sortBy: 'relevance',
   page: 1,
   organizations: [],
   organization_subdivisions: [],
   grant_types: [],
   activity_categories: [],
-  eligible_applicant_types: [],
+  eligible_applicant_types: undefined, // undefined means "all applicant types"
   keywords: [],
-  costSharingRequired: null,
-  // Show all grants by default (empty array means no status filter applied)
-  statuses: [], // Empty array shows all grants
-  data_source_ids: [] // Data source IDs
+  // costSharingRequired: REMOVED - all grants have same value (false)
+  // Show active and forecasted grants by default (most relevant - 84% of available grants)
+  statuses: ['active', 'forecasted'],
+  data_source_ids: undefined, // undefined means "all data sources"
+  // Show all currencies by default (only USD and EUR exist in database)
+  currencies: undefined, // undefined means "all available currencies"
+  includeNoCurrency: true, // Include grants without currency data
+  // Geographic scope default
+  geographic_scope: undefined, // undefined means "all locations"
+  includeNoGeographicScope: true // Include grants without location data
 };
 
 // Helper function to apply preset and handle conflicts

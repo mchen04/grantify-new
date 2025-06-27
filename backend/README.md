@@ -87,11 +87,23 @@ Authorization: Bearer <supabase-jwt-token>
 ### Main Endpoints
 
 #### Grants
-- `GET /api/grants` - Search and filter grants
+- `GET /api/grants` - Search and filter grants with optimized filtering system
 - `GET /api/grants/:id` - Get grant details
 - `GET /api/grants/recommended` - Get recommendations (auth required)
 - `POST /api/grants/batch` - Batch fetch grants
 - `GET /api/grants/metadata` - Filter options
+
+#### Grant Filtering (Updated v1.3.0)
+The grants endpoint supports streamlined filtering with the following parameters:
+- `search` - Full-text search across titles and descriptions
+- `currency` - Array of currencies (USD, EUR) with `include_no_currency` option
+- `status` - Array of grant statuses (defaults to ['active', 'forecasted'])
+- `geographic_scope` - Geographic region with `include_no_geographic_scope` option
+- `funding_min/funding_max` - Funding range with `include_no_funding` option
+- `deadline_start/deadline_end` - Deadline range with `include_no_deadline` option
+- `posted_date_start` - Filter by posting date
+- `sort_by` - Sort criteria (relevance, recent, deadline, amount, title)
+- `page/limit` - Pagination parameters
 
 #### User Interactions
 - `POST /api/grants/:id/save` - Save grant (auth required)

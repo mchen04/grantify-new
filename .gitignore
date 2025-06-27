@@ -199,7 +199,7 @@ personal-notes/
 drafts/
 .obsidian/
 
-# Claude-related documentation and files
+# AI assistant files and documentation
 claude.md
 CLAUDE.md
 .claude/
@@ -267,7 +267,12 @@ response-*.json
 # Generated documentation
 docs/generated/
 api-docs/generated/
-.claude
+
+# Additional filter test files from recent development
+*ultra-comprehensive-filter-test*
+*filter-test-results*
+test-filter-*
+*comprehensive-test*
 
 # ========================
 # Analytics and Tracking

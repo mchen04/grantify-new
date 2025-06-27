@@ -63,9 +63,11 @@ export class WorldBankApiClient extends BaseApiClient {
       
       // Funding
       currency: 'USD', // World Bank typically reports in USD
-      funding_amount_min: GrantNormalizer.normalizeAmount(rawProject.totalcommamt),
-      funding_amount_max: GrantNormalizer.normalizeAmount(rawProject.totalamt),
-      total_funding_available: GrantNormalizer.normalizeAmount(rawProject.totalamt),
+      // For World Bank, we need to ensure min <= max
+      // IMPORTANT: curr_total_commitment is in millions, totalamt/totalcommamt are full amounts
+      funding_amount_min: this.parseWorldBankAmount(rawProject),
+      funding_amount_max: this.parseWorldBankAmount(rawProject),
+      total_funding_available: this.parseWorldBankAmount(rawProject),
       
       // Dates
       posted_date: GrantNormalizer.normalizeDate(rawProject.boardapprovaldate),
@@ -235,6 +237,29 @@ export class WorldBankApiClient extends BaseApiClient {
     };
     
     return statusMap[status] || 'active';
+  }
+
+  /**
+   * Parse World Bank funding amounts correctly
+   * curr_total_commitment is in millions (e.g., "200" = $200M)
+   * totalamt and totalcommamt are full amounts with commas (e.g., "200,000,000")
+   */
+  private parseWorldBankAmount(rawProject: any): number | undefined {
+    // First check if we have curr_total_commitment (in millions)
+    if (rawProject.curr_total_commitment) {
+      const millions = GrantNormalizer.normalizeAmount(rawProject.curr_total_commitment);
+      if (millions) {
+        return millions * 1000000; // Convert millions to actual amount
+      }
+    }
+    
+    // Otherwise use totalamt or totalcommamt (already in full amounts)
+    const totalAmt = GrantNormalizer.normalizeAmount(rawProject.totalamt);
+    const totalCommAmt = GrantNormalizer.normalizeAmount(rawProject.totalcommamt);
+    const lendProjectCost = GrantNormalizer.normalizeAmount(rawProject.lendprojectcost);
+    
+    // Return the first valid amount found
+    return totalAmt || totalCommAmt || lendProjectCost || undefined;
   }
 
   async sync(options: any = {}): Promise<ApiSyncResult> {

@@ -67,12 +67,12 @@ export class GrantsGovApiClient extends BaseApiClient {
       funding_organization_name: rawGrant.agency,
       funding_organization_code: rawGrant.agencyCode,
       
-      // Funding
+      // Funding - Grants.gov API doesn't provide these fields in search response
       currency: 'USD',
-      funding_amount_min: GrantNormalizer.normalizeAmount(rawGrant.awardFloor),
-      funding_amount_max: GrantNormalizer.normalizeAmount(rawGrant.awardCeiling),
-      total_funding_available: GrantNormalizer.normalizeAmount(rawGrant.totalFunding),
-      expected_awards_count: rawGrant.expectedNumberOfAwards,
+      funding_amount_min: undefined, // Field not available in API
+      funding_amount_max: undefined, // Field not available in API
+      total_funding_available: undefined, // Field not available in API
+      expected_awards_count: undefined, // Field not available in API
       
       // Dates
       posted_date: GrantNormalizer.normalizeDate(rawGrant.openDate),

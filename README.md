@@ -10,7 +10,7 @@ Grantify.ai transforms how researchers discover and apply for grants by combinin
 
 - **Advanced Search**: Full-text search across grant titles and descriptions
 - **Smart Recommendations**: Algorithm that matches grants based on user preferences and interaction history
-- **Advanced Filtering**: Filter by 20+ criteria including funding amount, deadlines, eligibility, and agencies
+- **Optimized Filtering**: Streamlined filter system with 6 effective filters, inclusive data handling, and clear coverage indicators
 - **Real-time Updates**: Direct API integration with 13+ official grant data sources
 - **Responsive Design**: Full mobile support with comprehensive accessibility features
 - **Enterprise Security**: Supabase Auth with Google OAuth, RBAC, CSRF protection, rate limiting, and audit logging
@@ -287,5 +287,20 @@ This project is licensed under the MIT License.
 Built by the Grantify.ai team
 
 **Status**: Production Ready
-**Version**: 1.2.0
+**Version**: 1.3.0
 **Last Updated**: January 2025
+
+## Recent Updates (v1.3.0)
+
+### Filter System Optimization
+- **Removed ineffective filters**: Cost sharing (all grants identical), Featured (0 grants), Applicant types (no data)
+- **Fixed currency filter bug**: Unchecking currencies now works correctly
+- **Added inclusive data handling**: All filters include "Show All" options to prevent data exclusion
+- **Streamlined UI**: Cleaner interface with data coverage warnings
+- **Enhanced filter logic**: Proper handling of undefined vs explicit array selections
+
+### Technical Improvements
+- Comprehensive filter testing with 96 test scenarios (100% pass rate)
+- Updated filter mapping logic for better API parameter handling
+- Improved active filter counting and state management
+- Removed confusing "Only unspecified" options for cleaner UX

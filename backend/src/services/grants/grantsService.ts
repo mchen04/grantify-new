@@ -52,7 +52,14 @@ class GrantsService {
         query = query.gte('funding_amount_max', filters.funding_min);
       }
       if (filters.funding_max !== undefined) {
-        query = query.lte('funding_amount_min', filters.funding_max);
+        // Handle special case for $100M+
+        if (filters.funding_max >= 100000000) {
+          // For $100M+, we want grants with funding_amount_min >= $100M
+          query = query.gte('funding_amount_min', 100000000);
+        } else {
+          // For upper limit, filter by funding_amount_max to ensure grants don't exceed the limit
+          query = query.lte('funding_amount_max', filters.funding_max);
+        }
       }
 
       // Apply date filters
@@ -62,11 +69,41 @@ class GrantsService {
       if (filters.posted_date_end) {
         query = query.lte('posted_date', filters.posted_date_end);
       }
-      if (filters.deadline_start) {
-        query = query.gte('application_deadline', filters.deadline_start);
-      }
-      if (filters.deadline_end) {
-        query = query.lte('application_deadline', filters.deadline_end);
+      if (filters.deadline_start || filters.deadline_end) {
+        // If include_no_deadline is true, we need to use OR logic
+        if (filters.include_no_deadline) {
+          // Build conditions for deadline range OR null
+          const conditions = [];
+          
+          // Build the deadline range condition using Supabase's filter format
+          let deadlineCondition = '';
+          if (filters.deadline_start && filters.deadline_end) {
+            deadlineCondition = `application_deadline.gte.${filters.deadline_start},application_deadline.lte.${filters.deadline_end}`;
+          } else if (filters.deadline_start) {
+            deadlineCondition = `application_deadline.gte.${filters.deadline_start}`;
+          } else if (filters.deadline_end) {
+            deadlineCondition = `application_deadline.lte.${filters.deadline_end}`;
+          }
+          
+          if (deadlineCondition) {
+            conditions.push(deadlineCondition);
+          }
+          conditions.push('application_deadline.is.null');
+          
+          // Use OR to include both deadline range and null deadlines
+          query = query.or(conditions.join(','));
+        } else {
+          // Normal deadline filtering without null values
+          if (filters.deadline_start) {
+            query = query.gte('application_deadline', filters.deadline_start);
+          }
+          if (filters.deadline_end) {
+            query = query.lte('application_deadline', filters.deadline_end);
+          }
+        }
+      } else if (filters.include_no_deadline) {
+        // If only include_no_deadline is set without date ranges, just return all
+        // No additional filtering needed
       }
 
       // Apply type filters
@@ -105,6 +142,28 @@ class GrantsService {
       if (filters.cost_sharing_required !== undefined) {
         query = query.eq('cost_sharing_required', filters.cost_sharing_required);
       }
+      
+      // Apply currency filter
+      if (filters.currency) {
+        if (Array.isArray(filters.currency)) {
+          query = query.in('currency', filters.currency);
+        } else {
+          query = query.eq('currency', filters.currency);
+        }
+      }
+      
+      // Apply featured filter
+      if (filters.is_featured !== undefined) {
+        query = query.eq('is_featured', filters.is_featured);
+      }
+      
+      // Apply popularity filters
+      if (filters.min_view_count !== undefined) {
+        query = query.gte('view_count', filters.min_view_count);
+      }
+      if (filters.min_save_count !== undefined) {
+        query = query.gte('save_count', filters.min_save_count);
+      }
       if (filters.cfda_numbers) {
         if (Array.isArray(filters.cfda_numbers)) {
           query = query.contains('cfda_numbers', filters.cfda_numbers);
@@ -121,6 +180,65 @@ class GrantsService {
         query = query.neq('id', filters.exclude_id);
       }
 
+      // Data source filter
+      if (filters.data_source_ids) {
+        // Validate UUIDs to prevent database errors
+        const isValidUUID = (uuid: string) => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          return uuidRegex.test(uuid);
+        };
+        
+        if (Array.isArray(filters.data_source_ids)) {
+          // Filter out invalid UUIDs
+          const validUUIDs = filters.data_source_ids.filter(id => isValidUUID(id));
+          if (validUUIDs.length > 0) {
+            query = query.in('data_source_id', validUUIDs);
+          }
+        } else {
+          // Single value
+          if (isValidUUID(filters.data_source_ids)) {
+            query = query.eq('data_source_id', filters.data_source_ids);
+          }
+        }
+      }
+      
+      // Handle funding_null filter (only grants without funding)
+      if (filters.funding_null) {
+        query = query.is('funding_amount_min', null).is('funding_amount_max', null);
+      }
+      
+      // Handle posted date filter
+      if (filters.posted_date) {
+        // Handle special posted date presets
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        switch (filters.posted_date) {
+          case 'today':
+            query = query.eq('posted_date', today.toISOString().split('T')[0]);
+            break;
+          case 'this_week':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            query = query.gte('posted_date', weekStart.toISOString().split('T')[0]);
+            break;
+          case 'this_month':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            query = query.gte('posted_date', monthStart.toISOString().split('T')[0]);
+            break;
+          case 'last_30_days':
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            query = query.gte('posted_date', thirtyDaysAgo.toISOString().split('T')[0]);
+            break;
+        }
+      }
+      
+      // Handle deadline_null filter (only grants without deadline)
+      if (filters.deadline_null) {
+        query = query.is('application_deadline', null);
+      }
+      
       // User interaction filters
       // Exclude grants that the user has already interacted with
       if (filters.user_id && filters.exclude_interaction_types && filters.exclude_interaction_types.length > 0) {
