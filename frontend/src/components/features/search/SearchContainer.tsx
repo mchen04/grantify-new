@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import SearchResults from '@/components/features/search/SearchResults';
-import { Grant } from '@/types/grant';
+import { Grant } from '@/shared/types/grant';
 import { InteractionStatus } from '@/types/interaction';
 
 interface SearchContainerProps {
@@ -22,7 +22,6 @@ interface SearchContainerProps {
   pendingApplyGrant: Grant | null;
   onConfirmApply: () => void;
   onCancelApply: () => void;
-  getInteractionStatus: (grantId: string) => InteractionStatus | undefined;
 }
 
 const SearchContainer: React.FC<SearchContainerProps> = ({
@@ -41,8 +40,7 @@ const SearchContainer: React.FC<SearchContainerProps> = ({
   showApplyConfirmation,
   pendingApplyGrant,
   onConfirmApply,
-  onCancelApply,
-  getInteractionStatus
+  onCancelApply
 }) => {
   // Wrapper functions to match Promise expectations
   const handleSave = async (grantId: string, status: InteractionStatus | null) => {
@@ -91,7 +89,6 @@ const SearchContainer: React.FC<SearchContainerProps> = ({
         onApply={handleApply}
         onIgnore={handleIgnore}
         onShare={handleShare}
-        getInteractionStatus={getInteractionStatus}
       />
       
       {/* Apply Confirmation Popup - Lazy loaded via dynamic import in parent */}

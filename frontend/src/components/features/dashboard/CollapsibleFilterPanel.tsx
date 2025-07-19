@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { debounce } from '@/utils/debounce';
-import { SelectOption } from '@/types/grant';
+import { SelectOption } from '@/shared/types/grant';
 import { preferenceCookieManager, COOKIE_NAMES } from '@/utils/cookieManager';
 
 interface CollapsibleFilterPanelProps {

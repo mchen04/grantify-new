@@ -139,7 +139,7 @@ const nextConfig: NextConfig = {
           style-src 'self' 'unsafe-inline' *.googleapis.com;
           img-src 'self' data: blob: *.supabase.co *.googleusercontent.com;
           font-src 'self' *.googleapis.com *.gstatic.com;
-          connect-src 'self' *.supabase.co *.google-analytics.com ${process.env.NEXT_PUBLIC_API_URL || ''}
+          connect-src 'self' *.supabase.co *.google-analytics.com
         `.replace(/\s+/g, ' ').trim()
       });
     }

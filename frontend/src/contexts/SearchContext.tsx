@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
-import { Grant, GrantFilter, SelectOption } from '@/types/grant';
+import { Grant, GrantFilter, SelectOption } from '@/shared/types/grant';
 import { useFetchGrants } from '@/hooks/useFetchGrants';
 import { useGrantInteractions } from '@/hooks/useGrantInteractions';
 import { useAuth } from '@/contexts/AuthContext';

@@ -7,7 +7,7 @@ import { DEADLINE_RANGES } from '@/lib/config';
 import supabase from '@/lib/supabaseClient';
 import SettingsLayout from '@/components/features/settings/SettingsLayout';
 import { Button } from '@/components/ui/Button';
-import { usersApi } from '@/lib/apiClient';
+import supabaseApiClient from '@/lib/supabaseApiClient';
 
 export default function Preferences() {
   const { user, isLoading } = useAuth();
@@ -86,7 +86,7 @@ export default function Preferences() {
         setLoading(true);
         setMessage(null);
 
-        const response = await usersApi.getUserPreferences(user.id);
+        const response = await supabaseApiClient.users.getUserPreferences(user.id);
         const data = response.data;
         const error = response.error;
 
@@ -144,7 +144,7 @@ export default function Preferences() {
         throw new Error('No active session');
       }
 
-      const result = await usersApi.updateUserPreferences(user.id, preferences, session.access_token);
+      const result = await supabaseApiClient.users.updateUserPreferences(user.id, preferences);
 
       if (result.error) {
         throw new Error(result.error);

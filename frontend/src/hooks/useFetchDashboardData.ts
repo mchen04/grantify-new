@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { debounce } from '../utils/debounce';
 import { useMemo } from 'react';
-import apiClient from '@/lib/apiClient';
-import { Grant, ScoredGrant } from '@/types/grant';
+import supabaseApiClient from '@/lib/supabaseApiClient';
+import { Grant, ScoredGrant } from '@/shared/types/grant';
 import { UserPreferences } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInteractions } from '@/contexts/InteractionContext';
+// Removed InteractionContext - now using TanStack Query for interactions
+import { useUserInteractions } from './useInteractions';
 import { InteractionStatus } from '@/types/interaction';
 import supabase from '@/lib/supabaseClient';
 
@@ -37,11 +38,8 @@ export function useFetchDashboardData({
 }: UseFetchDashboardDataProps): UseFetchDashboardDataReturn {
   const { user } = useAuth();
   const currentUserId = userId || user?.id;
-  const {
-    interactionsMap,
-    isLoading: interactionsLoading,
-    lastInteractionTimestamp
-  } = useInteractions();
+  // Use new TanStack Query hooks for interactions
+  const { data: userInteractions = [], isLoading: interactionsLoading } = useUserInteractions();
   
   const [recommendedGrants, setRecommendedGrants] = useState<ScoredGrant[]>([]);
   const [savedGrants, setSavedGrants] = useState<Grant[]>([]);
@@ -176,7 +174,7 @@ export function useFetchDashboardData({
           // Create a completely new array to avoid any reference issues
           const grantIdsCopy = JSON.parse(JSON.stringify(chunk));
           
-          return apiClient.grants.getGrantsBatch(grantIdsCopy, accessToken);
+          return supabaseApiClient.grants.getGrantsBatch(grantIdsCopy);
         });
       
         const batchResults = await Promise.all(batchPromises);
@@ -314,20 +312,20 @@ export function useFetchDashboardData({
   const updateGrantLists = useCallback(async () => {
     if (!currentUserId || !enabled) return;
     
-    console.log('[updateGrantLists] Called with interactions:', Object.keys(interactionsMap).length);
+    console.log('[updateGrantLists] Called with interactions:', userInteractions.length);
     
-    // Extract grant IDs for each interaction type
+    // Extract grant IDs for each interaction type from TanStack Query data
     const savedGrantIds: string[] = [];
     const appliedGrantIds: string[] = [];
     const ignoredGrantIds: string[] = [];
     
-    // Filter grants by interaction type
+    // Filter grants by interaction type using new data structure
     const allInteractedIds: string[] = [];
-    Object.entries(interactionsMap).forEach(([grantId, status]) => {
-      allInteractedIds.push(grantId);
-      if (status === 'saved') savedGrantIds.push(grantId);
-      else if (status === 'applied') appliedGrantIds.push(grantId);
-      else if (status === 'ignored') ignoredGrantIds.push(grantId);
+    userInteractions.forEach(interaction => {
+      allInteractedIds.push(interaction.grant_id);
+      if (interaction.action === 'saved') savedGrantIds.push(interaction.grant_id);
+      else if (interaction.action === 'applied') appliedGrantIds.push(interaction.grant_id);
+      else if (interaction.action === 'ignored') ignoredGrantIds.push(interaction.grant_id);
     });
     
     
@@ -388,7 +386,7 @@ export function useFetchDashboardData({
     console.log('[updateGrantLists] Setting ignored grants:', newIgnoredGrants.length, 'of', ignoredGrantIds.length);
     setIgnoredGrants(newIgnoredGrants);
     
-  }, [currentUserId, enabled, interactionsMap, fetchGrantDetails]); // fetchGrantDetails is a stable ref now
+  }, [currentUserId, enabled, userInteractions, fetchGrantDetails]); // fetchGrantDetails is a stable ref now
 
   // Function to fetch recommended grants
   const fetchRecommendedGrants = useCallback(async () => {
@@ -409,13 +407,12 @@ export function useFetchDashboardData({
       const accessToken = session.access_token;
       
       // Get all interacted grant IDs to exclude from recommendations
-      const interactedGrantIds = Object.keys(interactionsMap);
+      const interactedGrantIds = userInteractions.map(interaction => interaction.grant_id);
       // Excluding interacted grants from recommendations
       
       // Fetch user preferences for scoring
-      const { data: preferences, error: preferencesError } = await apiClient.users.getUserPreferences(
-        currentUserId,
-        accessToken
+      const { data: preferences, error: preferencesError } = await supabaseApiClient.users.getUserPreferences(
+        currentUserId
       );
       
       if (preferencesError) {
@@ -434,13 +431,12 @@ export function useFetchDashboardData({
       }
       
       // Fetch recommended grants based on user preferences
-      const { data: recommendedData, error: recommendedError } = await apiClient.grants.getRecommendedGrants(
+      const { data: recommendedData, error: recommendedError } = await supabaseApiClient.grants.getRecommendedGrants(
         currentUserId,
         {
           exclude: interactedGrantIds,
           limit: targetRecommendedCount
-        },
-        accessToken
+        }
       );
       
       if (recommendedError) {
@@ -464,13 +460,13 @@ export function useFetchDashboardData({
     } catch (error: any) {
       // Error fetching recommended grants
     }
-  }, [currentUserId, enabled, interactionsMap, targetRecommendedCount]);
+  }, [currentUserId, enabled, userInteractions, targetRecommendedCount]);
 
   // Main function to fetch all dashboard data
   const fetchDashboardData = useCallback(async (isInitialLoad = false) => {
     if (!currentUserId || !enabled) return;
     
-    console.log('[fetchDashboardData] Called, isInitialLoad:', isInitialLoad, 'interactions:', Object.keys(interactionsMap).length);
+    console.log('[fetchDashboardData] Called, isInitialLoad:', isInitialLoad, 'interactions:', userInteractions.length);
 
     try {
       // Only show loading on initial load
@@ -501,7 +497,7 @@ export function useFetchDashboardData({
         setLoading(false);
       }
     }
-  }, [currentUserId, enabled, updateGrantLists, fetchRecommendedGrants, interactionsMap]);
+  }, [currentUserId, enabled, updateGrantLists, fetchRecommendedGrants, userInteractions]);
 
   // Fetch replacement recommended grants when needed
   const fetchReplacementRecommendations = useCallback(async () => {
@@ -539,13 +535,12 @@ export function useFetchDashboardData({
       ];
 
       // Fetch more recommended grants with preferences
-      const { data: newGrantsData, error: newGrantsError } = await apiClient.grants.getRecommendedGrants(
+      const { data: newGrantsData, error: newGrantsError } = await supabaseApiClient.grants.getRecommendedGrants(
         currentUserId,
         {
           exclude: allCurrentGrantIds,
           limit: neededCount
-        },
-        accessToken // Use accessToken
+        }
       );
 
       if (newGrantsError) {
@@ -588,7 +583,7 @@ export function useFetchDashboardData({
 
   // Track when interactions have been loaded at least once
   useEffect(() => {
-    const currentMapSize = Object.keys(interactionsMap).length;
+    const currentMapSize = userInteractions.length;
     console.log('[useFetchDashboardData] Tracking interactions:', {
       interactionsLoading,
       currentMapSize,
@@ -603,7 +598,7 @@ export function useFetchDashboardData({
       hasInteractionsLoadedOnceRef.current = true;
       lastInteractionMapSizeRef.current = currentMapSize;
     }
-  }, [interactionsLoading, lastInteractionTimestamp, interactionsMap, currentUserId]);
+  }, [interactionsLoading, userInteractions, currentUserId]);
 
   // Fetch dashboard data when user is available - simplified like search page
   useEffect(() => {
@@ -624,9 +619,7 @@ export function useFetchDashboardData({
             // Recent preferences update detected from localStorage
             localStorage.removeItem('preferencesUpdated'); // Clear the flag
             
-            // Clear cache before fetching
-            const { cacheUtils } = await import('@/lib/apiClient');
-            cacheUtils.clearCache();
+            // Cache clearing not needed with direct Supabase calls
           }
         } catch (e) {
           // Error parsing preferences update flag
@@ -645,7 +638,7 @@ export function useFetchDashboardData({
     console.log('[useFetchDashboardData] Dashboard load check:', {
       currentUserId,
       hasLoadedInitial: hasLoadedInitialRef.current,
-      interactionsMapSize: Object.keys(interactionsMap).length
+      interactionsMapSize: userInteractions.length
     });
     
     // Load dashboard immediately when user is available - don't wait for interactions
@@ -685,7 +678,8 @@ export function useFetchDashboardData({
       updateGrantLists();
       
       // Only fetch new recommendations if needed (e.g., when recommended list gets too small)
-      const recommendedCount = recommendedGrants.filter(g => !interactionsMap[g.id]).length;
+      const interactedGrantIds = new Set(userInteractions.map(i => i.grant_id));
+      const recommendedCount = recommendedGrants.filter(g => !interactedGrantIds.has(g.id)).length;
       if (recommendedCount < targetRecommendedCount * 0.7) {
         // Only fetch when we're below 70% of target
         debouncedFetchRecommendations();
@@ -696,7 +690,7 @@ export function useFetchDashboardData({
     return () => {
       debouncedFetchRecommendations.cancel();
     };
-  }, [currentUserId, interactionsLoading, lastInteractionTimestamp, updateGrantLists, debouncedFetchRecommendations, interactionsMap, recommendedGrants.length, targetRecommendedCount]);
+  }, [currentUserId, interactionsLoading, updateGrantLists, debouncedFetchRecommendations, userInteractions, recommendedGrants.length, targetRecommendedCount]);
  
   // Create a refetch function that doesn't show loading state
   const refetch = useCallback(async () => {

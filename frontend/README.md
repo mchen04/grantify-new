@@ -1,39 +1,33 @@
 # Grantify.ai Frontend
 
-Next.js-based frontend application for the Grantify.ai grant discovery platform.
+Modern Next.js frontend application for the Grantify.ai grant discovery platform, built with a clean skeleton architecture focusing on performance and developer experience.
 
 ## Features
 
-- **Smart Search**: Full-text grant discovery across 13+ API data sources
-- **Optimized Filtering**: Streamlined 6-filter system with inclusive data handling
-- **Smart Recommendations**: Algorithm based on user preferences and interaction history
-- **Responsive Design**: Mobile-first with full touch support
-- **Accessibility**: WCAG 2.1 AA compliant with screen reader optimization
-- **Performance**: Batch API calls, request deduplication, and intelligent caching
-- **Smart Tracking**: Save, apply, and ignore grants with instant UI updates
-- **PWA Support**: Progressive Web App with offline capabilities
-- **Error Monitoring**: Integrated Sentry for production debugging
+- **Smart Search**: Full-text grant discovery with advanced filtering
+- **Modern UI**: Clean, responsive design with Tailwind CSS
+- **Authentication**: Supabase Auth with Google OAuth integration
+- **Real-time Updates**: Live data synchronization with Supabase
+- **Accessibility**: WCAG 2.1 AA compliant with comprehensive support
+- **Performance Optimized**: Modern React patterns and data fetching
+- **PWA Ready**: Progressive Web App capabilities
 
 ## Tech Stack
 
-- **Framework**: Next.js 15.3.4 with App Router
-- **Language**: TypeScript 5 (strict mode)
-- **Styling**: Tailwind CSS 3.4 with custom design system
-- **State Management**: React Context API with custom hooks
-- **Authentication**: Supabase Auth with Google OAuth
-- **API Client**: Custom client with caching and deduplication
-- **Performance**: React 19, Turbopack, image optimization
-- **Accessibility**: ARIA support, keyboard navigation, screen reader guides
-- **Monitoring**: Sentry integration with session replay
-- **Testing**: Jest + React Testing Library + Playwright
+- **Framework**: Next.js 15.3+ with App Router
+- **Language**: TypeScript 5 with strict mode
+- **Styling**: Tailwind CSS 3.4+ with custom design system
+- **State Management**: React Context API with TanStack Query
+- **Authentication**: Supabase Auth with RLS policies
+- **Database**: Direct Supabase client integration
+- **Performance**: React 19, optimized builds, modern patterns
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 18+
 - npm or yarn
-- Supabase account with project created
-- Backend API running on port 3001
+- Supabase project with authentication configured
 
 ### Installation
 
@@ -49,17 +43,10 @@ npm install
 
 3. Create `.env.local` file:
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# API
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Optional - for monitoring
-NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
-SENTRY_AUTH_TOKEN=your-sentry-auth-token
 ```
 
 4. Start the development server:
@@ -74,198 +61,217 @@ npm run dev
 ```
 frontend/
 ├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── (auth)/            # Auth pages (login, signup)
-│   │   ├── (info)/            # Info pages (about, accessibility)
-│   │   ├── (legal)/           # Legal pages (privacy, terms)
-│   │   ├── ai-grant-discovery/ # AI search showcase
-│   │   ├── dashboard/         # Main dashboard with tabs
-│   │   ├── grants/[grantId]/  # Grant detail pages
-│   │   ├── search/            # Advanced search interface
-│   │   ├── smart-grant-matching/ # Smart matching feature
-│   │   ├── profile/           # User profile management
-│   │   ├── preferences/       # Preference settings
-│   │   └── settings/          # Account settings
-│   ├── components/
-│   │   ├── common/            # Shared components (ErrorBoundary, SkipLink)
-│   │   ├── features/          # Feature components
-│   │   │   ├── auth/          # Auth components
-│   │   │   ├── dashboard/     # Dashboard components
-│   │   │   ├── filters/       # Filter components
-│   │   │   ├── grants/        # Grant cards and actions
-│   │   │   ├── search/        # Search bar and results
-│   │   │   └── settings/      # Settings layout
-│   │   ├── layout/            # Layout components (Navbar, Footer)
-│   │   └── ui/                # UI primitives (Button, Badge)
-│   ├── contexts/              # React Contexts
-│   │   ├── AuthContext.tsx    # Authentication state
-│   │   ├── SearchContext.tsx  # Search filters state
-│   │   └── InteractionContext.tsx # Grant interactions
-│   ├── hooks/                 # Custom React hooks
-│   │   ├── useFetchDashboardData.ts # Dashboard data with batching
-│   │   ├── useGrantInteractions.ts  # Grant action handlers
-│   │   ├── useKeyboardShortcuts.ts  # Keyboard navigation
-│   │   └── useUserPreferences.ts    # Preference management
-│   ├── lib/                   # Core utilities
-│   │   ├── apiClient.ts       # API client with caching
-│   │   ├── supabaseClient.ts  # Supabase configuration
-│   │   └── grantRecommendations.ts # Client-side scoring
-│   ├── types/                 # TypeScript definitions
-│   └── utils/                 # Helper functions
-├── public/                    # Static assets
-├── next.config.ts            # Next.js configuration
-└── tailwind.config.ts        # Tailwind configuration
+│   ├── app/                      # Next.js App Router pages
+│   │   ├── (auth)/              # Authentication pages
+│   │   ├── (info)/              # Information pages
+│   │   ├── (legal)/             # Legal pages
+│   │   ├── dashboard/           # Main dashboard
+│   │   ├── grants/[grantId]/    # Grant detail pages
+│   │   ├── search/              # Search interface
+│   │   ├── profile/             # User profile
+│   │   └── settings/            # User settings
+│   ├── components/              # React components
+│   │   ├── ui/                  # Reusable UI components
+│   │   ├── features/            # Feature-specific components
+│   │   ├── layout/              # Layout components
+│   │   ├── common/              # Shared components
+│   │   └── index.ts             # Barrel exports
+│   ├── hooks/                   # Custom React hooks
+│   ├── lib/                     # Core utilities and configs
+│   ├── providers/               # React context providers
+│   ├── types/                   # TypeScript type definitions
+│   └── utils/                   # Helper functions
+├── public/                      # Static assets
+├── next.config.ts              # Next.js configuration
+└── tailwind.config.ts          # Tailwind CSS configuration
+```
+
+## Architecture
+
+### Clean Skeleton Benefits
+- **Simplified Stack**: Frontend → Supabase (no separate backend server)
+- **Modern Patterns**: Latest React and Next.js best practices
+- **Shared Types**: Common types in `shared/` directory for consistency
+- **Component Organization**: Barrel exports for cleaner imports
+- **TypeScript Paths**: Configured for optimal developer experience
+
+### Data Flow
+```
+Frontend → Supabase Client → Database (with RLS)
+       → Edge Functions → External APIs
 ```
 
 ## Key Features Implementation
 
-### Dashboard with Batch Loading
-The dashboard efficiently loads grant data using batch endpoints:
+### Component Library with Barrel Exports
 ```typescript
-// Fetches multiple grants in one request instead of N individual requests
-const { data } = await apiClient.grants.getGrantsBatch(grantIds);
+// Clean imports using barrel exports
+import { Button, Badge, GrantCard } from '@/components';
+import { Grant, GrantFilter } from '@/shared/types/grant';
 ```
 
-### API Client with Caching
-Advanced API client features:
-- **Request Deduplication**: Prevents duplicate concurrent requests
-- **Intelligent Caching**: TTL-based cache with automatic invalidation
-- **CSRF Protection**: Automatic token management
-- **Error Handling**: Comprehensive error messages
+### Authentication Flow
+- Google OAuth through Supabase Auth
+- Automatic session management
+- Row Level Security (RLS) for data access
+- Protected routes and pages
 
-### Real-time Interaction Updates
-Grant interactions update instantly across all tabs:
-```typescript
-// Context manages interaction state globally
-const { interactionsMap, updateInteraction } = useInteractions();
-```
+### Real-time Data
+- Direct Supabase client integration
+- TanStack Query for optimized data fetching
+- Real-time subscriptions for live updates
+- Optimistic updates for better UX
 
-### Weighted Recommendation Display
-Recommendations show AI-calculated scores:
-- Semantic similarity
-- Funding range match
-- Deadline proximity
-- Agency preferences
-- Category alignment
-
-### Optimized Filtering System (v1.3.0)
-Streamlined filter options with inclusive data handling:
-- **Funding Range**: Min/max amounts with "include grants without funding data" option
-- **Deadline Range**: Date pickers with "include grants without deadlines" option  
-- **Grant Status**: Active, forecasted, open, closed (defaults to active + forecasted)
-- **Geographic Scope**: Region selection with "include grants without location data" option
-- **Currency**: USD/EUR selection with "include grants without currency data" option
-- **Posted Date**: Filter by grant posting date
-
-**Key Improvements:**
-- Fixed currency filter bug (unchecking currencies now works correctly)
-- Removed ineffective filters (cost sharing, featured, applicant types) 
-- Added data coverage warnings for filters with limited data
-- All filters include "show all" options to prevent data exclusion
-- Cleaner UI with real grant count indicators
+### Search & Filtering
+Modern search experience with:
+- Full-text search across grant data
+- Advanced filtering with inclusive options
+- Real-time results updates
+- Search state management
 
 ### Accessibility Features
-- **Skip Links**: Jump to main content
-- **ARIA Live Regions**: Screen reader announcements
-- **Keyboard Shortcuts**: 
-  - `Cmd/Ctrl + K`: Open search
-  - `Cmd/Ctrl + S`: Save current grant
-  - `?`: Show keyboard shortcuts
-  - `Escape`: Close modals/dialogs
-  - `Tab/Shift+Tab`: Navigate through elements
-- **Focus Management**: Proper focus trapping in modals
-- **High Contrast**: Support for system preferences
-- **Reduced Motion**: Respects prefers-reduced-motion
-- **Screen Reader Guides**: Dedicated pages for NVDA/JAWS
-- **Form Labels**: All inputs properly labeled
-- **Error Announcements**: Clear error messages for screen readers
-- **Alt Text**: Meaningful descriptions for all images
-- **Semantic HTML**: Proper heading hierarchy and landmarks
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader**: ARIA labels and live regions  
+- **Skip Links**: Quick navigation
+- **Focus Management**: Proper focus handling
+- **High Contrast**: System preference support
+- **Reduced Motion**: Respect user preferences
 
-## Key Components & Hooks
+## Development Scripts
 
-### Custom Hooks
-- **useFetchDashboardData**: Manages dashboard data with batch loading
-- **useGrantInteractions**: Handles grant actions with optimistic updates
-- **useKeyboardShortcuts**: Global keyboard navigation
-- **useUserPreferences**: Preference management
-
-### Component Library
-- **Grant Components**: GrantCard, GrantCardIcons, GrantCardFooter, ActionButton
-- **Filter Components**: CompactAdvancedFilterPanel, ActiveFilters, FundingRangeFilter, DeadlineFilter
-- **UI Components**: Button, Badge, Container, SkipLink, ErrorBoundary
+```bash
+npm run dev          # Development server with hot reload
+npm run build        # Production build
+npm run start        # Start production server
+npm run lint         # ESLint code checking
+npm run bundle-analyzer  # Analyze bundle size
+```
 
 ## Performance Optimizations
 
-### Implemented Optimizations
-1. **Batch API Calls**: Reduced requests by 90%+
-2. **Request Deduplication**: Prevents redundant API calls
-3. **Smart Caching**: 5-minute TTL for dynamic data
-4. **Lazy Loading**: Components loaded on demand
-5. **Image Optimization**: Next.js Image with AVIF/WebP
-6. **Turbopack**: Fast development builds
-7. **React Compiler**: Optimized bundle size
-8. **Dynamic Imports**: Code splitting for better performance
-9. **Prefetching**: Link prefetching for instant navigation
+### Implemented Features
+1. **Modern React Patterns**: Latest hooks and patterns
+2. **TanStack Query**: Optimized data fetching and caching
+3. **Component Optimization**: Efficient re-rendering
+4. **Image Optimization**: Next.js Image with modern formats
+5. **Code Splitting**: Dynamic imports for better loading
+6. **Bundle Optimization**: Tree shaking and dead code elimination
 
-### Bundle Optimization
-```javascript
-// next.config.ts
+### Bundle Configuration
+```typescript
+// next.config.ts optimizations
 experimental: {
-  optimizePackageImports: ['@supabase/supabase-js']
+  optimizePackageImports: ['@supabase/supabase-js', '@tanstack/react-query']
 }
 ```
 
 ## Security
 
-- **Authentication**: Google OAuth via Supabase
+- **Authentication**: Supabase Auth with JWT tokens
+- **Authorization**: Row Level Security policies  
 - **Session Management**: Automatic token refresh
-- **CSRF Protection**: Token-based protection
-- **Security Headers**: X-Frame-Options, CSP, HSTS, etc.
-- **Input Sanitization**: DOMPurify for HTML content
+- **Input Validation**: Client-side validation with server verification
+- **Security Headers**: Comprehensive security headers via Next.js
 
-## Testing
+## Component Architecture
 
-```bash
-npm test                 # Run unit tests
-npm run test:watch      # Watch mode
-npm run test:coverage   # Coverage report
-npm run test:e2e        # E2E tests with Playwright
-npm run test:e2e:ui     # Playwright UI mode
-npm run test:perf       # Performance tests
-npm run test:a11y       # Accessibility tests
+### Shared Components
+- **UI Components**: Button, Badge, Container (reusable primitives)
+- **Layout Components**: Navbar, Footer, Layout (structural)
+- **Feature Components**: GrantCard, SearchBar, Filters (domain-specific)
+
+### Hooks Pattern
+```typescript
+// Custom hooks for business logic
+const { grants, loading, error } = useFetchGrants(filters);
+const { user, signOut } = useAuth();
+const { saveGrant } = useGrantInteractions();
+```
+
+### Context Providers
+```typescript
+// Clean context organization
+<AuthProvider>
+  <SearchProvider>
+    <QueryProvider>
+      <App />
+    </QueryProvider>
+  </SearchProvider>
+</AuthProvider>
 ```
 
 ## Deployment
 
-### Docker Deployment
-```bash
-# Build and run with Docker
-docker build -f Dockerfile.frontend -t grantify-frontend .
-docker run -p 3000:3000 grantify-frontend
+### Vercel (Recommended)
+1. Connect GitHub repository to Vercel
+2. Set build settings:
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.next`
+3. Add environment variables
+4. Deploy automatically on git push
+
+### Environment Variables for Production
+```env
+NEXT_PUBLIC_SUPABASE_URL=your-production-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-anon-key
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
-### Vercel Deployment
-```bash
-vercel deploy --prod
+## Supabase Integration
+
+### Client Configuration
+```typescript
+// lib/supabaseClient.ts
+import { createClient } from '@supabase/supabase-js';
+
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 ```
 
-See the main [README.md](../README.md) for detailed deployment instructions.
+### Database Access
+- Direct client access with RLS policies
+- TypeScript types generated from schema
+- Real-time subscriptions for live data
+- Optimistic updates for better UX
 
 ## Progressive Web App
 
-- **Offline Support**: Service worker caching
-- **Install Prompt**: Add to home screen
+- **Service Worker**: Caching for offline support
 - **App Manifest**: Native app experience
-- **Push Notifications**: Grant deadline reminders (planned)
+- **Install Prompt**: Add to home screen capability
+- **Responsive Design**: Works on all device sizes
 
 ## Troubleshooting
 
-- **Hydration Errors**: Check for browser-only APIs in SSR
-- **Auth Issues**: Verify Supabase URL and keys
+### Common Issues
+- **Hydration Errors**: Check for browser-only code in SSR
+- **Auth Issues**: Verify Supabase configuration and RLS policies
 - **Build Errors**: Clear `.next` directory and check environment variables
-- **Performance**: Run `npm run build:analyze` to check bundle size
+- **Performance Issues**: Use `npm run bundle-analyzer` to inspect bundle
+
+### Development Tips
+- Use React DevTools for debugging
+- Check Network tab for API calls
+- Verify RLS policies in Supabase dashboard
+- Test accessibility with screen reader
+
+## Contributing
+
+1. Follow the component patterns established in the codebase
+2. Use TypeScript strict mode for all new code
+3. Add proper accessibility attributes
+4. Follow the established file organization
+5. Update documentation for new features
 
 ## License
 
 Part of the Grantify.ai project - MIT License
+
+---
+
+**Architecture**: Frontend → Supabase
+**Status**: Clean Skeleton - Ready for Development  
+**Version**: 2.0.0

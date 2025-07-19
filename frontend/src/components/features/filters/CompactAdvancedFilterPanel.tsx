@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { GrantFilter } from '@/types/grant';
+import { GrantFilter } from '@/shared/types/grant';
 import FundingRangeFilter from './FundingRangeFilter';
 import DeadlineFilter from './DeadlineFilter';
 import { DEFAULT_FILTER_STATE, validateFilterState } from '@/utils/filterPresets';
@@ -56,6 +56,9 @@ export default function CompactAdvancedFilterPanel({
   };
 
   const handleApply = async () => {
+    // Prevent multiple rapid clicks
+    if (isApplying) return;
+    
     setIsApplying(true);
     setJustApplied(false);
     try {
@@ -63,14 +66,16 @@ export default function CompactAdvancedFilterPanel({
       onFilterChange(pendingFilters);
       await onApply();
       setJustApplied(true);
-    } finally {
-      // Add a small delay to show the applying state
+      
+      // Show success state briefly then reset
       setTimeout(() => {
-        setIsApplying(false);
-        setTimeout(() => {
-          setJustApplied(false);
-        }, 2000); // Show success state for 2 seconds
-      }, 500);
+        setJustApplied(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+    } finally {
+      // Reset applying state immediately for better UX
+      setIsApplying(false);
     }
   };
 
@@ -115,7 +120,6 @@ export default function CompactAdvancedFilterPanel({
     
     // Special filters
     if (pendingFilters.onlyFeatured) count++;
-    if (pendingFilters.postDateFrom) count++;
     
     return count;
   };
@@ -308,37 +312,6 @@ export default function CompactAdvancedFilterPanel({
             </div>
           </div>
 
-          {/* Posted Date Filter - FUNCTIONAL */}
-          <div className="border border-blue-200 rounded-lg p-3 bg-blue-50">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">📅 Posted Date</h4>
-            <select
-              value={(() => {
-                if (!pendingFilters.postDateFrom) return '';
-                const days = Math.floor((new Date().getTime() - new Date(pendingFilters.postDateFrom).getTime()) / (1000 * 60 * 60 * 24));
-                if (days <= 7) return '7';
-                if (days <= 30) return '30';
-                if (days <= 90) return '90';
-                return '';
-              })()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value) {
-                  const date = new Date();
-                  date.setDate(date.getDate() - parseInt(value));
-                  handleFilterChange({ postDateFrom: date.toISOString() });
-                } else {
-                  handleFilterChange({ postDateFrom: undefined });
-                }
-              }}
-              className="form-select w-full text-xs py-1 px-2"
-            >
-              <option value="">Any Time (3,874)</option>
-              <option value="7">Last 7 days (~50)</option>
-              <option value="30">Last 30 days (~200)</option>
-              <option value="90">Last 90 days (~600)</option>
-            </select>
-            <div className="text-xs text-blue-600 mt-1">Estimates based on posting patterns</div>
-          </div>
         </div>
 
         {/* Action Buttons Row - Compact */}

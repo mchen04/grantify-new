@@ -1,5 +1,5 @@
-import { GrantFilter } from '@/types/grant';
-import { MAX_FUNDING, MIN_DEADLINE_DAYS, MAX_DEADLINE_DAYS } from './constants';
+import { GrantFilter } from '@/shared/types/grant';
+import { MAX_FUNDING, MIN_DEADLINE_DAYS, MAX_DEADLINE_DAYS } from '@/shared/constants/app';
 
 // Centralized filter preset definitions
 export const FILTER_PRESETS = {

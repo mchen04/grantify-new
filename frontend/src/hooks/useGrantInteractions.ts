@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import apiClient, { cacheUtils } from '@/lib/apiClient';
+import supabaseApiClient from '@/lib/supabaseApiClient';
 import { UserInteraction } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
 import { announce } from '@/components/common/AriaLiveAnnouncer';
@@ -83,18 +83,14 @@ export function useGrantInteractions({
       // setInteractionLoading(true); // Removed loading animation
 
       try {
-        // Record the interaction using apiClient
-        const { error } = await apiClient.users.recordInteraction(
+        // Record the interaction using Supabase
+        const { error } = await supabaseApiClient.users.recordInteraction(
           effectiveUserId,
           grantId,
-          action,
-          effectiveAccessToken
+          action
         );
 
         if (error) throw new Error(error);
-        
-        // Clear only interactions cache to ensure fresh data on next fetch
-        cacheUtils.clearInteractionsCache();
         
         // Announce the action for screen readers
         const actionMessages = {
@@ -129,18 +125,14 @@ export function useGrantInteractions({
       // setInteractionLoading(true); // Removed loading animation
 
       try {
-        // Delete the interaction using apiClient
-        const { error } = await apiClient.users.deleteInteraction(
+        // Delete the interaction using Supabase
+        const { error } = await supabaseApiClient.users.deleteInteraction(
           effectiveUserId,
           grantId,
-          action,
-          effectiveAccessToken
+          action
         );
 
         if (error) throw new Error(error);
-        
-        // Clear only interactions cache to ensure fresh data on next fetch
-        cacheUtils.clearInteractionsCache();
       } catch (error: any) {
         
         onError(`Failed to undo ${action.replace('ed', '')}: ${error.message || 'Please try again.'}`);

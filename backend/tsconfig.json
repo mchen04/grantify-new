@@ -6,7 +6,6 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "dist",
-    "rootDir": "src",
     "sourceMap": true,
     "resolveJsonModule": true,
     "lib": [
@@ -17,15 +16,16 @@
       "WebWorker.ImportScripts",
       "ScriptHost"
     ],
-    "types": ["node", "express"],
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/shared/*": ["../shared/*"],
+      "@/shared": ["../shared"]
     },
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
+  "include": ["**/*.ts", "../shared/**/*", "../supabase/**/*"],
   "exclude": ["node_modules", "dist"]
 }

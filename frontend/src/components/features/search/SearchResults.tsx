@@ -2,8 +2,9 @@
 
 import React, { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import GrantCard from '@/components/features/grants/GrantCard';
-import { Grant } from '@/types/grant';
+import { Grant } from '@/shared/types/grant';
 import { InteractionStatus } from '@/types/interaction';
+import { useUserInteractions } from '@/hooks/useInteractions';
 
 interface SearchResultsProps {
   grants: Grant[];
@@ -19,7 +20,6 @@ interface SearchResultsProps {
   onShare: (grantId: string) => Promise<void>;
   onIgnore: (grantId: string, status: InteractionStatus | null) => Promise<void>;
   onConfirmApply?: (grantId: string) => Promise<void>;
-  getInteractionStatus: (grantId: string) => InteractionStatus | undefined;
 }
 
 // Define the ref type
@@ -43,9 +43,17 @@ const SearchResults = forwardRef<SearchResultsRef, SearchResultsProps>(({
   onSave,
   onShare,
   onIgnore,
-  onConfirmApply,
-  getInteractionStatus
+  onConfirmApply
 }, ref) => {
+  // Get user interactions for status checking
+  const { data: userInteractions = [] } = useUserInteractions();
+  
+  // Helper function to get interaction status for a grant
+  const getInteractionStatus = useCallback((grantId: string): InteractionStatus | undefined => {
+    const interaction = userInteractions.find(i => i.grant_id === grantId);
+    return interaction?.action;
+  }, [userInteractions]);
+
   // Ensure numeric values are valid (Number.isFinite checks for NaN, Infinity, and undefined)
   const safePage = (Number.isFinite(page) && page > 0) ? page : 1;
   const safeTotalPages = (Number.isFinite(totalPages) && totalPages > 0) ? totalPages : 1;

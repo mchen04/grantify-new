@@ -1,377 +1,199 @@
 # Grantify.ai Backend
 
-Express.js API server for the Grantify.ai grant discovery platform.
+Minimal backend utilities for the Grantify.ai grant discovery platform. The main backend logic has been migrated to Supabase Edge Functions as part of the clean skeleton architecture.
 
-## Tech Stack
+## Current Status
 
-- **Runtime**: Node.js 18+
-- **Framework**: Express.js 4.18.2 with TypeScript
-- **Database**: PostgreSQL 15 with pgvector (Supabase)
-- **API Integration**: 13+ grant data sources
-- **Caching**: Hybrid Redis + in-memory fallback
-- **Security**: JWT auth, RBAC, CSRF protection, rate limiting
-- **Monitoring**: Sentry error tracking, Winston logging
+**⚠️ Legacy Directory**: This directory contains minimal utilities only. The main backend functionality has been moved to:
+- **Supabase Edge Functions**: `/supabase/functions/` 
+- **Database Scripts**: `/supabase/scripts/`
+- **Shared Utilities**: `/shared/`
 
-## Project Structure
+## What Remains
+
+This directory now contains only:
+- Essential TypeScript configuration
+- Minimal package.json for development scripts
+- Legacy utility scripts for database management
+
+## Architecture Migration
+
+### Before (v1.x)
+```
+Frontend → Express.js Backend → PostgreSQL Database
+```
+
+### After (v2.x - Current)
+```
+Frontend → Supabase (Edge Functions + Database)
+```
+
+## Current Structure
 
 ```
 backend/
-├── src/
-│   ├── config/       # Configuration management
-│   ├── db/           # Database client and queries
-│   ├── middleware/   # Express middleware
-│   ├── models/       # TypeScript types
-│   ├── routes/       # API endpoints
-│   ├── services/     # Business logic
-│   └── utils/        # Helper utilities
-├── scripts/          # Data collection and maintenance
-├── logs/             # Application logs
-└── dist/             # Compiled TypeScript
+├── package.json          # Minimal dependencies for utilities
+├── tsconfig.json         # TypeScript configuration
+└── [Legacy files]        # Moved to supabase/ and shared/
 ```
 
-## Getting Started
+## New Architecture Components
 
-### Prerequisites
-- Node.js 18+
-- Supabase project with pgvector extension
-- Redis (optional)
+### Supabase Edge Functions (`/supabase/functions/`)
+- **Grant Data Sync**: Automated data collection from official sources
+- **AI Recommendations**: Personalized grant matching algorithms  
+- **Search Processing**: Advanced search and filtering logic
+- **Cron Jobs**: Scheduled data updates and maintenance
 
-### Installation
+### Database Scripts (`/supabase/scripts/`)
+- Database schema management
+- Migration utilities
+- Data seeding scripts
+- Database function definitions
 
-1. Install dependencies:
+### Shared Utilities (`/shared/`)
+- Common TypeScript types
+- Shared constants and configurations
+- Utility functions used across components
+
+## Development Scripts
+
 ```bash
-cd backend
-npm install
+npm run build        # Compile TypeScript (if needed)
+npm run lint         # ESLint code checking
 ```
 
-2. Create `.env` file:
-```env
-# Server
-PORT=3001
-NODE_ENV=development
+## Migration Benefits
 
-# Supabase
-SUPABASE_URL=your-project-url
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+### Simplified Architecture
+- **No Express.js server** to maintain and deploy
+- **Supabase Edge Functions** handle all server-side logic
+- **Global distribution** via edge computing
+- **Automatic scaling** without server management
 
-# Security
-JWT_SECRET=your-32-char-secret
+### Reduced Complexity
+- **Fewer dependencies** to manage and update
+- **No server infrastructure** to configure
+- **Built-in authentication** via Supabase Auth
+- **Integrated database** with Row Level Security
 
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:3000
+### Better Performance
+- **Edge functions** run close to users globally
+- **Direct database access** without API overhead
+- **Built-in caching** and optimization
+- **Real-time capabilities** without WebSocket management
 
-# Redis (optional)
-REDIS_URL=redis://localhost:6379
-REDIS_ENABLED=false
+## Database Access
 
-# Monitoring (optional)
-SENTRY_DSN=your-sentry-dsn
+Database operations now happen through:
+
+### Frontend
+```typescript
+// Direct Supabase client access with RLS
+import { supabase } from '@/lib/supabaseClient';
+
+const { data, error } = await supabase
+  .from('grants')
+  .select('*')
+  .eq('status', 'active');
 ```
 
-3. Start development server:
-```bash
-npm run dev
+### Edge Functions
+```typescript
+// Server-side operations in Edge Functions
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
 ```
 
-Server runs on `http://localhost:3001`
-
-## API Documentation
-
-### Authentication
-Protected endpoints require:
-```
-Authorization: Bearer <supabase-jwt-token>
-```
-
-### Main Endpoints
-
-#### Grants
-- `GET /api/grants` - Search and filter grants with optimized filtering system
-- `GET /api/grants/:id` - Get grant details
-- `GET /api/grants/recommended` - Get recommendations (auth required)
-- `POST /api/grants/batch` - Batch fetch grants
-- `GET /api/grants/metadata` - Filter options
-
-#### Grant Filtering (Updated v1.3.0)
-The grants endpoint supports streamlined filtering with the following parameters:
-- `search` - Full-text search across titles and descriptions
-- `currency` - Array of currencies (USD, EUR) with `include_no_currency` option
-- `status` - Array of grant statuses (defaults to ['active', 'forecasted'])
-- `geographic_scope` - Geographic region with `include_no_geographic_scope` option
-- `funding_min/funding_max` - Funding range with `include_no_funding` option
-- `deadline_start/deadline_end` - Deadline range with `include_no_deadline` option
-- `posted_date_start` - Filter by posting date
-- `sort_by` - Sort criteria (relevance, recent, deadline, amount, title)
-- `page/limit` - Pagination parameters
-
-#### User Interactions
-- `POST /api/grants/:id/save` - Save grant (auth required)
-- `POST /api/grants/:id/apply` - Mark as applied (auth required)
-- `POST /api/grants/:id/ignore` - Ignore grant (auth required)
-- `DELETE /api/grants/:id/save` - Unsave grant (auth required)
-
-#### User Preferences
-- `GET /api/users/preferences` - Get preferences (auth required)
-- `PUT /api/users/preferences` - Update preferences (auth required)
-
-#### Analytics
-- `GET /api/analytics/dashboard` - Dashboard metrics (auth required)
-- `GET /api/analytics/grants` - Grant statistics
-
-### Rate Limits
-- General API: 100 requests/15 min
-- Auth endpoints: 5 requests/15 min
-- Recommendation API: 50 requests/15 min
-
-## Key Features
+## Key Features Now in Edge Functions
 
 ### Smart Recommendations
-Weighted scoring algorithm:
-- Funding range match (30%)
-- Deadline proximity (25%)
-- Agency preferences (20%)
-- Category matching (15%)
-- Interaction history (10%, negative for ignored)
+- Weighted scoring algorithm implemented in Edge Functions
+- Real-time recommendations based on user preferences
+- ML-powered semantic search using vector embeddings
 
-### Performance Optimizations
-- Batch API endpoints
-- Request deduplication
-- Hybrid caching strategy
-- Database query optimization
-- Materialized views for analytics
+### Data Synchronization  
+- Automated grant data collection from 13+ APIs
+- Scheduled updates via Supabase cron jobs
+- Error handling and retry logic
 
-### Security Features
-- JWT authentication with Supabase
-- CSRF token validation
-- Rate limiting per endpoint
-- Input validation and sanitization
-- Audit logging
-- RBAC implementation
+### Authentication & Security
+- Supabase Auth with Google OAuth
+- Row Level Security (RLS) policies
+- JWT token management
+- Rate limiting and protection
 
-## Testing
+## Legacy Utilities
+
+If you need to run legacy database scripts:
 
 ```bash
-npm run build          # Compile TypeScript
-npm run start          # Production server
-npm run dev            # Development with nodemon
-npm run logs           # View application logs
+# Example legacy operations (if needed)
+npm run setup:database    # Database setup (now in supabase/)
 ```
 
-## Deployment
+## Documentation
 
-### Docker
-```bash
-docker build -f ../Dockerfile.backend -t grantify-backend .
-docker run -p 3001:3001 grantify-backend
+For current backend functionality, see:
+- **[Supabase Functions Documentation](../supabase/functions/README.md)**
+- **[Database Schema Documentation](../docs/architecture/database-schema.md)**
+- **[API Documentation](../docs/api/README.md)**
+
+## Contributing
+
+For new backend functionality:
+1. **Use Edge Functions**: Create new functions in `/supabase/functions/`
+2. **Database Changes**: Add migrations to `/supabase/migrations/`
+3. **Shared Code**: Add utilities to `/shared/`
+4. **Documentation**: Update docs in `/docs/`
+
+## Migration Guide
+
+If you need to migrate remaining Express.js code:
+
+### 1. API Routes → Edge Functions
+```typescript
+// OLD: Express.js route
+app.get('/api/grants', async (req, res) => {
+  // logic here
+});
+
+// NEW: Edge Function
+export default async function handler(req: Request) {
+  // logic here
+  return new Response(JSON.stringify(data));
+}
 ```
 
-### Production Setup
-1. Set `NODE_ENV=production`
-2. Configure Redis for caching
-3. Enable Sentry monitoring
-4. Set up SSL/TLS termination
-5. Configure rate limits appropriately
+### 2. Middleware → Edge Function Logic
+```typescript
+// OLD: Express middleware
+app.use(authenticate);
 
-## Data Sources
-
-Automated sync with 13+ grant APIs:
-- NIH Reporter
-- Grants.gov
-- NSF Awards
-- SAM.gov
-- USASPENDING
-- And more...
-
-## Database Schema
-
-### Overview
-PostgreSQL 15.8.1 database hosted on Supabase with the following architecture:
-- **Primary Schema**: `public`
-- **Total Tables**: 10 core tables
-- **Key Extensions**: pgvector (0.8.0), pg_trgm (1.6), btree_gin (1.3), pgcrypto (1.3), uuid-ossp (1.1)
-
-### Core Tables
-
-#### 1. `users`
-User accounts synced with Supabase Auth.
-```sql
-- id: uuid (PK, references auth.users)
-- email: text (unique, not null)
-- created_at: timestamptz
-- updated_at: timestamptz
-```
-**RLS**: Enabled | **Size**: 64 KB
-
-#### 2. `grants` 
-Main table storing all grant opportunities from multiple sources.
-```sql
-- id: uuid (PK)
-- data_source_id: uuid (FK to data_sources)
-- source_identifier: varchar (unique within source)
-- title: text (not null)
-- status: varchar (open|active|closed|awarded|forecasted|archived)
-- funding_amount_min/max: numeric
-- application_deadline: timestamptz
-- search_vector: tsvector (for full-text search)
-- raw_data: jsonb
-- [30+ additional fields for grant details]
-```
-**RLS**: Enabled | **Size**: 39 MB | **Records**: ~3,874
-
-#### 3. `data_sources`
-Configuration for grant data API sources.
-```sql
-- id: uuid (PK)
-- name: varchar (unique)
-- api_type: varchar (opportunities|awards|mixed|intelligence|verification)
-- base_url: text
-- auth_type: varchar (none|api_key|bearer)
-- update_frequency: varchar (realtime|hourly|4hours|daily|weekly|monthly)
-- geographic_coverage: varchar
-- rate_limit_per_minute: integer
-```
-**RLS**: Enabled | **Size**: 96 KB
-
-#### 4. `user_preferences`
-User settings for grant recommendations.
-```sql
-- user_id: uuid (PK, FK to users)
-- funding_min/max: numeric
-- preferred_countries: text[]
-- preferred_states: text[]
-- preferred_categories: jsonb
-- project_description: text
-- project_description_embedding: vector (1536 dimensions)
-- notification_frequency: varchar (realtime|daily|weekly|monthly|never)
-```
-**RLS**: Enabled | **Size**: 1.2 MB
-
-#### 5. `user_interactions`
-Tracks user actions on grants.
-```sql
-- id: uuid (PK)
-- user_id: uuid (FK to users)
-- grant_id: uuid (FK to grants)
-- action: varchar (viewed|saved|applied|ignored|shared|downloaded)
-- action_metadata: jsonb
-- notes: text
-- created_at: timestamptz
-```
-**RLS**: Enabled | **Size**: 96 KB
-
-#### 6. `api_sync_schedules`
-Defines automated sync jobs for data sources.
-```sql
-- id: uuid (PK)
-- data_source_id: uuid (FK to data_sources)
-- schedule_name: varchar
-- cron_expression: varchar
-- sync_strategy: varchar (full|incremental|differential)
-- is_active: boolean
-- max_records_per_sync: integer
-```
-**RLS**: Enabled | **Size**: 80 KB
-
-#### 7. `api_sync_logs`
-Detailed logs of all sync operations.
-```sql
-- id: uuid (PK)
-- data_source_id: uuid (FK to data_sources)
-- sync_type: varchar (scheduled|manual|webhook|retry)
-- status: varchar (started|in_progress|completed|failed|cancelled)
-- records_fetched/created/updated/failed: integer
-- duration_seconds: integer
-- error_details: jsonb
-```
-**RLS**: Enabled | **Size**: 40 KB
-
-#### 8. `api_sync_state`
-Maintains sync state for incremental updates.
-```sql
-- id: uuid (PK)
-- data_source_id: uuid (FK to data_sources)
-- state_key: varchar
-- state_value: jsonb
-- last_updated: timestamptz
-```
-**RLS**: Enabled | **Size**: 32 KB
-
-#### 9. `user_roles`
-Role-based access control.
-```sql
-- id: uuid (PK)
-- user_id: uuid (FK to auth.users)
-- role: varchar (user|admin|moderator)
-- created_at: timestamptz
-- updated_at: timestamptz
-```
-**RLS**: Enabled | **Size**: 72 KB
-
-#### 10. `csrf_tokens`
-CSRF protection tokens.
-```sql
-- id: uuid (PK)
-- user_id: uuid (FK to auth.users, unique)
-- token: varchar
-- expires_at: timestamptz
-- created_at: timestamptz
-```
-**RLS**: Enabled | **Size**: 136 KB
-
-### Database Features
-
-#### Full-Text Search
-- Implemented using `tsvector` on grants.search_vector
-- Automatically updated via triggers
-- Supports weighted search across title, description, and other fields
-
-#### Vector Embeddings
-- pgvector extension for semantic search
-- 1536-dimensional embeddings for project descriptions
-- Enables similarity-based grant recommendations
-
-#### Indexes
-- B-tree indexes on primary keys and foreign keys
-- GIN indexes for full-text search
-- HNSW indexes for vector similarity search
-- Composite indexes for common query patterns
-
-#### Row-Level Security (RLS)
-All tables have RLS enabled with policies for:
-- Users can only access their own data
-- Public read access for grants and metadata
-- Admin access for system operations
-
-### Key Extensions
-
-1. **pgvector (0.8.0)**: Vector similarity search for ML-powered recommendations
-2. **pg_trgm (1.6)**: Trigram-based fuzzy text matching
-3. **btree_gin (1.3)**: GIN indexing for common data types
-4. **pgcrypto (1.3)**: Cryptographic functions for security
-5. **uuid-ossp (1.1)**: UUID generation
-6. **pgjwt (0.2.0)**: JWT token handling
-7. **pg_stat_statements (1.10)**: Query performance monitoring
-8. **pg_graphql (1.5.11)**: GraphQL API support
-9. **pgsodium (3.1.8)**: Encryption functions
-10. **supabase_vault (0.2.8)**: Secure secret storage
-
-## Maintenance
-
-### Database
-```bash
-# Cleanup orphaned data
-curl -X POST http://localhost:3001/api/maintenance/cleanup-orphaned-interactions
-
-# Check orphaned data stats
-curl http://localhost:3001/api/maintenance/orphaned-interactions-stats
+// NEW: Edge Function auth check
+const auth = await supabase.auth.getUser(token);
+if (!auth.user) throw new Error('Unauthorized');
 ```
 
-### Monitoring
-- Health check: `GET /api/health`
-- Sentry dashboard for errors
-- Winston logs in `logs/` directory
+### 3. Database Queries → Direct Supabase
+```typescript
+// OLD: Custom database client
+const result = await db.query('SELECT * FROM grants');
+
+// NEW: Supabase client
+const { data } = await supabase.from('grants').select('*');
+```
 
 ## License
 
 Part of the Grantify.ai project - MIT License
+
+---
+
+**Status**: Legacy Directory - Use Supabase Edge Functions
+**Architecture**: Frontend → Supabase (Edge Functions + Database)  
+**Version**: 2.0.0

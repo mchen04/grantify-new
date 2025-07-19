@@ -1,5 +1,6 @@
 # ========================
 # Root Level .gitignore for Grantify.ai
+# Clean Skeleton - Frontend → Supabase Architecture
 # ========================
 
 # ========================
@@ -20,7 +21,7 @@ node_modules/
 .env.vault
 .env.backup
 *.env.backup
-# Specific frontend env files
+# Frontend environment files
 frontend/.env.local
 frontend/.env.production
 frontend/.env.development.local
@@ -46,17 +47,6 @@ out/
 *.tsbuildinfo
 .tsc-multi/
 .turbo/
-
-# ========================
-# Testing
-# ========================
-coverage/
-.nyc_output/
-*.lcov
-test-results/
-playwright-report/
-jest-results/
-.jest-cache/
 
 # ========================
 # IDE and Editor
@@ -148,20 +138,11 @@ core.*
 *.heapsnapshot
 
 # ========================
-# Monitoring
+# Project Specific - Clean Skeleton
 # ========================
-.sentryclirc
-newrelic_agent.log
-datadog-config.json
-
-# ========================
-# Project Specific
-# ========================
-# Test and debug files
+# Development and debug files
 test-connection.js
-check-orphaned-interactions.js
 cleanup-*.js
-test-*.js
 debug-*.js
 fix-*.js
 scratch.js
@@ -170,10 +151,13 @@ experiment*.js
 
 # Frontend specific files
 frontend/frontend.log
-frontend/src/utils/maintenance.ts
 
-# Backend specific files
-backend/src/routes/maintenance.ts
+# Supabase local development
+supabase/.temp/
+supabase/.branches/
+supabase/seed.sql.backup
+
+# Legacy backend artifacts (removed from skeleton)
 backend/data/
 backend/downloads/
 backend/scraped-data/
@@ -209,8 +193,7 @@ CLAUDE.md
 .roo/
 .roo*
 
-# Supabase local development
-supabase/
+# Supabase local development (keep structure, ignore temp files)
 .supabase/
 supabase/.temp/
 supabase/.branches/

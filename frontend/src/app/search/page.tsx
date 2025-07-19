@@ -4,13 +4,19 @@ import React, { useState, useEffect, useCallback, Suspense, useRef, useMemo } fr
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
-import apiClient, { grantsApi } from '@/lib/apiClient';
-import { Grant, GrantFilter, SelectOption } from '@/types/grant';
+import supabaseApiClient from '@/lib/supabaseApiClient';
+import { Grant, GrantFilter, SelectOption } from '@/shared/types/grant';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInteractions } from '@/contexts/InteractionContext';
 import { InteractionStatus } from '@/types/interaction';
+import { useGrants } from '@/hooks/useGrants';
+import { 
+  useInteractionStatus, 
+  useSaveGrantMutation, 
+  useApplyGrantMutation, 
+  useIgnoreGrantMutation,
+  useDeleteInteractionMutation 
+} from '@/hooks/useInteractions';
 import { debounce } from '@/utils/debounce';
-import { cancelAllRequests } from '@/lib/apiClient';
 import {
   MAX_FUNDING,
   MIN_DEADLINE_DAYS,
@@ -98,10 +104,12 @@ function SearchContent() {
 
   // Context hooks
   const { user, session, isLoading: authLoading } = useAuth();
-  const { getInteractionStatus, updateUserInteraction } = useInteractions();
   
-  // Note: Using InteractionContext directly instead of useGrantInteractions hook
-  // for better integration with the search functionality
+  // TanStack Query hooks for interactions
+  const { saveGrant } = useSaveGrantMutation();
+  const { applyGrant } = useApplyGrantMutation();
+  const { ignoreGrant } = useIgnoreGrantMutation();
+  const deleteInteraction = useDeleteInteractionMutation();
   
   // Refs
   const searchResultsRef = React.useRef<{
@@ -109,6 +117,10 @@ function SearchContent() {
   } | null>(null);
   const isApplyingRef = React.useRef(false);
   const hasLoadedInitialRef = React.useRef(false);
+  
+  // Request tracking to prevent race conditions
+  const currentRequestIdRef = React.useRef<string | null>(null);
+  const requestCounterRef = React.useRef(0);
 
   // Track if we've done the initial fetch
   const [initialFetchDone, setInitialFetchDone] = useState(false);
@@ -164,12 +176,26 @@ function SearchContent() {
     setFilter(prev => ({ ...prev, ...validateFilterState(updates) }));
   }, [filter.onlyNoDeadline]);
 
-  // Build API filters from state
+  // Stable refs for buildApiFilters to prevent recreation
+  const filterRef = useRef(filter);
+  const userRef = useRef(user);
+  const submittedSearchTermRef = useRef(submittedSearchTerm);
+  const sessionRef = useRef(session);
+  const authLoadingRef = useRef(authLoading);
+  
+  // Update refs when values change
+  filterRef.current = filter;
+  userRef.current = user;
+  submittedSearchTermRef.current = submittedSearchTerm;
+  sessionRef.current = session;
+  authLoadingRef.current = authLoading;
+
+  // Build API filters from state - now stable
   const buildApiFilters = useCallback(() => {
     // Create a filter object with the submitted search term
     const filterWithSearch = {
-      ...filter,
-      searchTerm: submittedSearchTerm
+      ...filterRef.current,
+      searchTerm: submittedSearchTermRef.current
     };
     
     // Use the mapping utility to convert filters
@@ -179,34 +205,39 @@ function SearchContent() {
     apiFilters.limit = SEARCH_GRANTS_PER_PAGE;
     
     // Always include user_id if available for personalization
-    if (user) {
-      apiFilters.user_id = user.id;
+    if (userRef.current) {
+      apiFilters.user_id = userRef.current.id;
       // Exclude grants the user has already interacted with from search results
       apiFilters.exclude_interaction_types = ['saved', 'applied', 'ignored'];
       console.log('[Search] Building API filters with user:', {
-        userId: user.id,
+        userId: userRef.current.id,
         excludeInteractionTypes: apiFilters.exclude_interaction_types,
         allFilters: apiFilters
       });
     }
     
     console.log('[Search] buildApiFilters completed:', {
-      hasUser: !!user,
+      hasUser: !!userRef.current,
       hasExcludeParam: !!apiFilters.exclude_interaction_types,
       filterCount: Object.keys(apiFilters).length,
       hasStatus: !!apiFilters.status,
       status: apiFilters.status,
-      filterStatuses: filter.statuses,
-      rawFilter: filter,
+      filterStatuses: filterRef.current.statuses,
+      rawFilter: filterRef.current,
       mappedFilters: apiFilters
     });
     
     return apiFilters;
-  }, [filter, user, submittedSearchTerm]);
+  }, []); // No dependencies - uses refs for stability
 
   // Create a stable fetch function that doesn't depend on filter state
   const fetchGrantsCore = useCallback(async (apiFilters: any, sortBy: string, isInitialLoad = false, appendMode = false) => {
+    // Generate unique request ID for this call
+    const requestId = `req_${++requestCounterRef.current}_${Date.now()}`;
+    currentRequestIdRef.current = requestId;
+    
     console.log('[Search] fetchGrantsCore called:', {
+      requestId,
       apiFilters,
       isInitialLoad,
       appendMode,
@@ -220,9 +251,19 @@ function SearchContent() {
       }
       setError(null);
       
-      const response = await apiClient.grants.getGrants(apiFilters, sortBy, session?.access_token);
+      const response = await supabaseApiClient.grants.getGrants(apiFilters, sessionRef.current?.access_token);
+      
+      // Check if this response is from the current request
+      if (currentRequestIdRef.current !== requestId) {
+        console.log('[Search] Ignoring stale response:', {
+          responseRequestId: requestId,
+          currentRequestId: currentRequestIdRef.current
+        });
+        return; // Ignore stale responses
+      }
       
       console.log('[Search] API response:', {
+        requestId,
         hasData: !!response.data,
         hasError: !!response.error,
         grantCount: response.data?.grants?.length || 0,
@@ -235,6 +276,7 @@ function SearchContent() {
       
       // If no data and no error, it was likely cancelled - don't process
       if (!response.data && !response.error) {
+        console.log('[Search] Request was cancelled:', requestId);
         return;
       }
       
@@ -275,25 +317,36 @@ function SearchContent() {
       setLocalInteractedIds(new Set());
       setHiddenGrantIds(new Set());
     } catch (error: any) {
-      setError(`Failed to load grants: ${error.message || 'Please try again later.'}`);
+      // Only set error if this is still the current request
+      if (currentRequestIdRef.current === requestId) {
+        // Check if it was an abort error (cancellation)
+        if (error.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
+          console.log('[Search] Request was aborted:', requestId);
+          return; // Don't set error for intentional cancellations
+        }
+        setError(`Failed to load grants: ${error.message || 'Please try again later.'}`);
+      } else {
+        console.log('[Search] Ignoring error from stale request:', requestId);
+      }
     } finally {
-      if (isInitialLoad) {
+      // Only clear loading if this is still the current request
+      if (isInitialLoad && currentRequestIdRef.current === requestId) {
         setLoading(false);
       }
     }
-  }, [session?.access_token]);
+  }, []); // No dependencies - uses refs for session access
 
   // Ref to track if we're currently fetching
   const fetchingRef = useRef(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Fetch function - accepts optional parameter to control loading spinner
+  // Fetch function - stable with no dependencies
   const fetchGrants = useCallback((showLoadingSpinner = true) => {
     console.log('[Search] fetchGrants called, user state:', {
-      user,
-      userId: user?.id,
+      user: userRef.current,
+      userId: userRef.current?.id,
       authLoading,
-      session: !!session
+      session: !!sessionRef.current
     });
     
     // Don't fetch if we're in the middle of applying or interacting with grants
@@ -314,7 +367,7 @@ function SearchContent() {
       if (isInitial) {
         hasLoadedInitialRef.current = true;
       }
-      fetchGrantsCore(apiFilters, filter.sortBy, isInitial, false).finally(() => {
+      fetchGrantsCore(apiFilters, filterRef.current.sortBy, isInitial, false).finally(() => {
         fetchingRef.current = false;
         // Only clear searching state if we're not in the middle of interactions
         if (!isApplyingRef.current) {
@@ -323,7 +376,7 @@ function SearchContent() {
       });
     } else {
     }
-  }, [buildApiFilters, filter.sortBy, fetchGrantsCore, user, authLoading, session]);
+  }, []); // No dependencies - uses refs for all values
 
   // Special function to fetch grants after interaction to fill the gap
   const fetchGrantsAfterInteraction = useCallback(() => {
@@ -331,11 +384,11 @@ function SearchContent() {
       fetchingRef.current = true;
       const apiFilters = buildApiFilters();
       // Fetch a full page of grants but we'll handle the replacement differently
-      fetchGrantsCore(apiFilters, filter.sortBy, false, false).finally(() => {
+      fetchGrantsCore(apiFilters, filterRef.current.sortBy, false, false).finally(() => {
         fetchingRef.current = false;
       });
     }
-  }, [buildApiFilters, filter.sortBy, fetchGrantsCore]);
+  }, []); // No dependencies - uses refs for all values
 
   // Handle visibility change to show apply confirmation when user returns
   useEffect(() => {
@@ -372,7 +425,7 @@ function SearchContent() {
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        const response = await grantsApi.getGrantMetadata();
+        const response = await supabaseApiClient.grants.getGrantMetadata();
         
         if (response.data) {
           setAvailableOptions({
@@ -447,13 +500,16 @@ function SearchContent() {
       // Immediately hide the grant for instant UI update
       setHiddenGrantIds(prev => new Set([...prev, grantId]));
       
-      // Use InteractionContext to update the interaction
-      // If status is null, it means we're toggling off an existing interaction
-      // If status is 'saved', it means we're adding a new save
-      console.log('[Search] Calling updateUserInteraction with:', { grantId, action: status === null ? null : 'saved' });
+      // Use TanStack Query to update the interaction
+      console.log('[Search] Calling saveGrant with:', { grantId, status });
       
-      // Always pass 'saved' - the InteractionContext handles toggling internally
-      await updateUserInteraction(grantId, 'saved');
+      if (status === null) {
+        // Remove existing save interaction
+        await deleteInteraction.mutateAsync({ grantId, action: 'saved' });
+      } else {
+        // Add save interaction
+        saveGrant(grantId);
+      }
       
       console.log('[Search] updateUserInteraction completed successfully');
       
@@ -477,7 +533,7 @@ function SearchContent() {
       // Clear the flag immediately
       isApplyingRef.current = false;
     }
-  }, [user, updateUserInteraction, fetchGrants]);
+  }, [user, saveGrant, deleteInteraction, fetchGrants]);
   
   const handleIgnoreInteraction = useCallback(async (grantId: string, status: InteractionStatus | null): Promise<void> => {
     console.log('[Search] Ignore interaction called:', { 
@@ -500,13 +556,16 @@ function SearchContent() {
       // Immediately hide the grant for instant UI update
       setHiddenGrantIds(prev => new Set([...prev, grantId]));
       
-      // Use InteractionContext to update the interaction
-      // If status is null, it means we're toggling off an existing interaction
-      // If status is 'ignored', it means we're adding a new ignore
-      console.log('[Search] Calling updateUserInteraction with:', { grantId, action: status === null ? null : 'ignored' });
+      // Use TanStack Query to update the interaction
+      console.log('[Search] Calling ignoreGrant with:', { grantId, status });
       
-      // Always pass 'ignored' - the InteractionContext handles toggling internally
-      await updateUserInteraction(grantId, 'ignored');
+      if (status === null) {
+        // Remove existing ignore interaction
+        await deleteInteraction.mutateAsync({ grantId, action: 'ignored' });
+      } else {
+        // Add ignore interaction
+        ignoreGrant(grantId);
+      }
       
       console.log('[Search] updateUserInteraction completed successfully');
       
@@ -530,7 +589,7 @@ function SearchContent() {
       // Clear the flag immediately
       isApplyingRef.current = false;
     }
-  }, [user, updateUserInteraction, fetchGrants]);
+  }, [user, ignoreGrant, deleteInteraction, fetchGrants]);
 
   const handleApplyClick = useCallback(async (grantId: string, status?: InteractionStatus | 'pending' | null): Promise<void> => {
     console.log('[Search] Apply clicked for grant:', grantId, 'status:', status);
@@ -545,8 +604,8 @@ function SearchContent() {
       
       try {
         isApplyingRef.current = true;
-        // Always pass 'applied' - the InteractionContext handles toggling internally
-        await updateUserInteraction(grantId, 'applied');
+        // Use TanStack Query to apply grant
+        applyGrant(grantId);
         setLocalInteractedIds(prev => new Set([...prev, grantId]));
         fetchGrants(false);
       } catch (error: any) {
@@ -571,7 +630,7 @@ function SearchContent() {
       // Don't show dialog immediately - wait for user to return
       return;
     }
-  }, [grants, user, updateUserInteraction, fetchGrants]);
+  }, [grants, user, applyGrant, fetchGrants]);
   
   const handleApplyConfirmation = useCallback(async (didApply: boolean) => {
     console.log('[Search] Apply confirmation:', didApply, 'for grant:', pendingGrantId);
@@ -579,8 +638,8 @@ function SearchContent() {
     
     if (didApply && pendingGrantId) {
       try {
-        // Use InteractionContext to update the interaction
-        await updateUserInteraction(pendingGrantId, 'applied');
+        // Use TanStack Query to apply grant
+        applyGrant(pendingGrantId);
         
         // Track locally interacted grants
         setLocalInteractedIds(prev => new Set([...prev, pendingGrantId]));
@@ -597,13 +656,13 @@ function SearchContent() {
     
     // Clear the flag to allow fetching again
     isApplyingRef.current = false;
-  }, [pendingGrantId, updateUserInteraction, fetchGrants]);
+  }, [pendingGrantId, applyGrant, fetchGrants]);
 
   const handleConfirmApply = useCallback(async () => {
     if (pendingGrantId) {
       try {
-        // Use InteractionContext to update the interaction
-        await updateUserInteraction(pendingGrantId, 'applied');
+        // Use TanStack Query to apply grant
+        applyGrant(pendingGrantId);
         
         // Track locally interacted grants
         setLocalInteractedIds(prev => new Set([...prev, pendingGrantId]));
@@ -619,7 +678,7 @@ function SearchContent() {
     setPendingGrantId(null);
     setPendingGrantTitle('');
     isApplyingRef.current = false;
-  }, [pendingGrantId, updateUserInteraction, fetchGrants]);
+  }, [pendingGrantId, applyGrant, fetchGrants]);
 
   const handleCancelApply = useCallback(() => {
     setShowApplyConfirmation(false);
@@ -664,55 +723,70 @@ function SearchContent() {
     }
   }, [mounted, urlQuery, submittedSearchTerm]);
 
-  // Effects
+  // Effects - stable auth effect
   useEffect(() => {
     console.log('[Search] Auth effect running:', {
       authLoading,
-      user: !!user,
-      session: !!session,
-      isAuthReady: isAuthReady(authLoading, user, session),
+      user: !!userRef.current,
+      session: !!sessionRef.current,
+      isAuthReady: isAuthReady(authLoading, userRef.current, sessionRef.current),
       initialFetchDone
     });
     
     // Only fetch grants after auth state is determined AND session is available
-    if (isAuthReady(authLoading, user, session) && !initialFetchDone) {
+    if (isAuthReady(authLoading, userRef.current, sessionRef.current) && !initialFetchDone) {
       console.log('[Search] Auth ready, fetching grants...');
-      fetchGrants();
+      // Use buildApiFilters directly to avoid fetchGrants dependency loop
+      const apiFilters = buildApiFilters();
+      fetchGrantsCore(apiFilters, filterRef.current.sortBy, true, false);
       setInitialFetchDone(true);
     }
-  }, [fetchGrants, authLoading, initialFetchDone, user, session]);
+  }, [authLoading, initialFetchDone]); // Only auth state dependencies
   
   // Fallback: If auth takes too long, fetch grants anyway
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!initialFetchDone && authLoading) {
         console.log('[Search] Auth timeout - fetching grants anyway');
-        fetchGrants();
+        // Use direct approach to avoid fetchGrants dependency
+        const apiFilters = buildApiFilters();
+        fetchGrantsCore(apiFilters, filterRef.current.sortBy, true, false);
         setInitialFetchDone(true);
       }
     }, 3000); // 3 second timeout
     
     return () => clearTimeout(timer);
-  }, [initialFetchDone, authLoading, fetchGrants]);
+  }, [initialFetchDone, authLoading]); // Only state dependencies
   
+  // Create refs to store latest values for debounced function
+  const buildApiFiltersRef = useRef(buildApiFilters);
+  const fetchGrantsCoreRef = useRef(fetchGrantsCore);
+  
+  // Update refs when values change
+  buildApiFiltersRef.current = buildApiFilters;
+  fetchGrantsCoreRef.current = fetchGrantsCore;
+
   // Create a debounced fetch function for filter changes
   const debouncedFetchGrants = useMemo(
     () => debounce(() => {
-      if (initialFetchDone) {
-        // Cancel any pending requests before starting new ones
-        cancelAllRequests();
-        // Don't show loading spinner for filter changes
-        fetchGrants(false);
+      if (initialFetchDone && !fetchingRef.current) {
+        fetchingRef.current = true;
+        // Direct Supabase calls don't need manual cancellation
+        // Use refs to get latest values without stale closure
+        const apiFilters = buildApiFiltersRef.current();
+        fetchGrantsCoreRef.current(apiFilters, filterRef.current.sortBy, false, false).finally(() => {
+          fetchingRef.current = false;
+        });
       }
     }, 1000), // 1 second debounce delay
-    [initialFetchDone, fetchGrants]
+    [initialFetchDone] // Stable dependencies to prevent recreation
   );
 
   // Navigation handlers
   const handleSearch = useCallback((e: React.FormEvent | null, searchValue?: string) => {
     try {
       e?.preventDefault?.();
-      const valueToSearch = searchValue ?? filter.searchTerm;
+      const valueToSearch = searchValue ?? filterRef.current.searchTerm;
     
     // Only set searching state if not interacting with grants
     if (!isApplyingRef.current) {
@@ -738,12 +812,13 @@ function SearchContent() {
         setIsSearching(false);
       }
     }
-  }, [filter, debouncedFetchGrants, fetchGrants]);
+  }, [debouncedFetchGrants, fetchGrants]); // Removed filter dependency
 
-  // Fetch grants when filter changes (after initial load)
+  // Fetch grants when page, sort, or search term changes (after initial load)
+  // Other filter changes now require explicit Apply button click
   useEffect(() => {
     if (initialFetchDone) {
-      // Use debounced fetch for filter changes
+      // Use debounced fetch for page/search/sort changes only
       debouncedFetchGrants();
     }
     
@@ -751,18 +826,13 @@ function SearchContent() {
       // Cancel debounced call on cleanup
       debouncedFetchGrants.cancel();
     };
-  }, [filter.page, filter.sortBy, filter.fundingMin, filter.fundingMax, 
-      filter.deadlineMinDays, filter.deadlineMaxDays, filter.includeNoDeadline, 
-      filter.onlyNoDeadline, filter.includeFundingNull, filter.onlyNoFunding, 
-      filter.showOverdue, submittedSearchTerm, initialFetchDone]);
+  }, [filter.page, filter.sortBy, submittedSearchTerm, initialFetchDone, debouncedFetchGrants]);
   
 
   // Cleanup effect for component unmount
   useEffect(() => {
     return () => {
-      // Cancel all pending API requests when component unmounts
-      // The API client will handle aborted requests gracefully
-      cancelAllRequests();
+      // Direct Supabase calls don't need manual cleanup
     };
   }, []);
 
@@ -847,6 +917,9 @@ function SearchContent() {
                       categories={[]}
                       onFiltersChange={(changes) => {
                         setFilter(prev => ({ ...prev, ...changes, page: 1 }));
+                        // Don't trigger immediate search - let user click Apply button for better control
+                      }}
+                      onApplyFilters={() => {
                         // Cancel any pending debounced calls and trigger immediate search
                         debouncedFetchGrants.cancel();
                         // Only show searching animation if not interacting with grants
@@ -896,7 +969,6 @@ function SearchContent() {
             pendingApplyGrant={pendingGrantId ? grants.find(g => g.id === pendingGrantId) || null : null}
             onConfirmApply={handleConfirmApply}
             onCancelApply={handleCancelApply}
-            getInteractionStatus={getInteractionStatus}
           />
         </div>
         

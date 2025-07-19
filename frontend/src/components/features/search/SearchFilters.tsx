@@ -2,7 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { GrantFilter, SelectOption } from '@/types/grant';
+import { GrantFilter, SelectOption } from '@/shared/types/grant';
 
 // Import directly without dynamic loading to ensure it renders properly
 import CompactAdvancedFilterPanel from '@/components/features/filters/CompactAdvancedFilterPanel';
@@ -23,6 +23,7 @@ interface SearchFiltersProps {
   categories: SelectOption[];
   onFiltersChange: (filters: GrantFilter) => void;
   onClearFilters: () => void;
+  onApplyFilters?: () => void;
 }
 
 const SearchFilters: React.FC<SearchFiltersProps> = ({
@@ -30,7 +31,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
   agencies,
   categories,
   onFiltersChange,
-  onClearFilters
+  onClearFilters,
+  onApplyFilters
 }) => {
   const handleFilterChange = (partialFilters: Partial<GrantFilter>) => {
     onFiltersChange({ ...filters, ...partialFilters });
@@ -45,7 +47,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
       <CompactAdvancedFilterPanel
         filters={filters}
         onFilterChange={handleFilterChange}
-        onApply={() => {}}
+        onApply={onApplyFilters || (() => {})}
         availableOptions={{
           agencies: agencies?.map(a => a.value) || [],
           activityCategories: categories?.map(c => c.value) || []

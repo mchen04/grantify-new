@@ -6,8 +6,15 @@ import { formatCurrency, formatDate, truncateText } from '@/utils/formatters';
 import ActionButton from '@/components/features/grants/ActionButton';
 import GrantCardIcons from '@/components/features/grants/GrantCardIcons';
 import GrantCardFooter from '@/components/features/grants/GrantCardFooter';
-import { useInteractions } from '@/contexts/InteractionContext';
 import { InteractionStatus } from '@/types/interaction';
+import { useCleanupOnUnmount, useSafeTimeout } from '@/hooks/useCleanupOnUnmount';
+import { 
+  useInteractionStatus, 
+  useSaveGrantMutation, 
+  useApplyGrantMutation, 
+  useIgnoreGrantMutation,
+  useDeleteInteractionMutation 
+} from '@/hooks/useInteractions';
 
 interface GrantCardProps {
   id: string;
@@ -63,10 +70,17 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
   const safeFundingAmount = Number.isFinite(fundingAmount) && !Number.isNaN(fundingAmount) ? fundingAmount : null;
   const formattedAmount = formatCurrency(safeFundingAmount);
   const truncatedDescription = truncateText(description, 150);
-  const { getInteractionStatus } = useInteractions();
+  // Cleanup management to prevent race conditions after unmount
+  const cleanup = useCleanupOnUnmount();
   
-  // Use the InteractionContext to get the current status
-  const interactionStatus = getInteractionStatus(id);
+  // Get interaction status using TanStack Query
+  const interactionStatus = useInteractionStatus(id);
+  
+  // Get mutation hooks for each action
+  const { saveGrant, isPending: isSaving } = useSaveGrantMutation();
+  const { applyGrant, isPending: isApplying } = useApplyGrantMutation();
+  const { ignoreGrant, isPending: isIgnoring } = useIgnoreGrantMutation();
+  const deleteInteraction = useDeleteInteractionMutation();
   
   console.log('[GrantCard] Interaction status check:', {
     id,
@@ -76,7 +90,7 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
     propIsSaved: isSaved
   });
   
-  // Use the context status if provided, otherwise fall back to props
+  // Use the query status if available, otherwise fall back to props
   const isAppliedCurrent = interactionStatus === 'applied' || isApplied;
   const isIgnoredCurrent = interactionStatus === 'ignored' || isIgnored;
   const isSavedCurrent = interactionStatus === 'saved' || isSaved;
@@ -96,10 +110,23 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
 
   // Function to fade out the card (for dashboard use)
   const fadeAndRemoveCard = async () => {
-    if (enableFadeAnimation) {
-      setFading(true);
-      // Wait for fade animation to complete
-      await new Promise(resolve => setTimeout(resolve, 300));
+    if (enableFadeAnimation && cleanup.isMounted()) {
+      const safeSetFading = cleanup.safeSetState(setFading);
+      safeSetFading(true);
+      
+      // Wait for fade animation to complete with safe async execution
+      await cleanup.safeAsync(async () => {
+        return new Promise<void>(resolve => {
+          const timer = setTimeout(() => {
+            if (cleanup.isMounted()) {
+              resolve();
+            }
+          }, 300);
+          
+          // Add timer to cleanup registry
+          cleanup.addTimer(timer, 'fade-animation');
+        });
+      });
     }
   };
 
@@ -121,39 +148,52 @@ const GrantCard = forwardRef<GrantCardRef, GrantCardProps>(({
       opportunityId
     });
     
-    // If already applied, toggle the status
+    // If already applied, remove the interaction
     if (isAppliedCurrent) {
-      onApply?.(null);
+      deleteInteraction.mutate({ grantId: id, action: 'applied' });
+      onApply?.(null); // Call legacy callback if provided
       return;
     }
     
-    // For dashboard, the parent component handles opening the link
-    // For search page, we open it here
-    if (onApply) {
-      onApply('pending');
-    } else {
-      // Fallback for when no onApply handler is provided
-      const applyUrl = sourceUrl || 
-        (opportunityId ? `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opportunityId}` : 
-         `https://www.grants.gov/search-results.html?keywords=${encodeURIComponent(title)}`);
-      
-      window.open(applyUrl, '_blank');
-    }
-  }, [id, sourceUrl, opportunityId, title, isAppliedCurrent, onApply]);
+    // Mark as applied using TanStack Query
+    applyGrant(id);
+    
+    // Call legacy callback if provided (for backward compatibility)
+    onApply?.('pending');
+    
+    // Open application URL
+    const applyUrl = sourceUrl || 
+      (opportunityId ? `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opportunityId}` : 
+       `https://www.grants.gov/search-results.html?keywords=${encodeURIComponent(title)}`);
+    
+    window.open(applyUrl, '_blank');
+  }, [id, sourceUrl, opportunityId, title, isAppliedCurrent, onApply, applyGrant, deleteInteraction]);
 
   const handleSaveClick = useCallback(() => {
     console.log('[GrantCard] Save clicked:', { id, isSavedCurrent, hasOnSave: !!onSave });
-    // Toggle the saved status
-    const newStatus: InteractionStatus | null = isSavedCurrent ? null : 'saved' as InteractionStatus;
-    onSave?.(newStatus);
-  }, [id, isSavedCurrent, onSave]);
+    
+    // Toggle the saved status using TanStack Query
+    if (isSavedCurrent) {
+      deleteInteraction.mutate({ grantId: id, action: 'saved' });
+      onSave?.(null); // Call legacy callback if provided
+    } else {
+      saveGrant(id);
+      onSave?.('saved'); // Call legacy callback if provided
+    }
+  }, [id, isSavedCurrent, onSave, saveGrant, deleteInteraction]);
 
   const handleIgnoreClick = useCallback(() => {
     console.log('[GrantCard] Ignore clicked:', { id, isIgnoredCurrent, hasOnIgnore: !!onIgnore });
-    // Toggle the ignored status
-    const newStatus: InteractionStatus | null = isIgnoredCurrent ? null : 'ignored' as InteractionStatus;
-    onIgnore?.(newStatus);
-  }, [id, isIgnoredCurrent, onIgnore]);
+    
+    // Toggle the ignored status using TanStack Query
+    if (isIgnoredCurrent) {
+      deleteInteraction.mutate({ grantId: id, action: 'ignored' });
+      onIgnore?.(null); // Call legacy callback if provided
+    } else {
+      ignoreGrant(id);
+      onIgnore?.('ignored'); // Call legacy callback if provided
+    }
+  }, [id, isIgnoredCurrent, onIgnore, ignoreGrant, deleteInteraction]);
 
   return (
     <article 

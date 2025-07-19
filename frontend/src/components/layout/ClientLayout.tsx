@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { InteractionProvider } from "@/contexts/InteractionContext";
+// Removed InteractionProvider - now using TanStack Query for interactions
 import { SearchProvider } from "@/contexts/SearchContext";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { QueryProvider } from "@/providers/QueryProvider";
 
 export default function ClientLayout({
   children,
@@ -38,13 +39,13 @@ export default function ClientLayout({
   
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <InteractionProvider>
+      <QueryProvider>
+        <AuthProvider>
           <SearchProvider>
             {children}
           </SearchProvider>
-        </InteractionProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </QueryProvider>
     </ErrorBoundary>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { GrantFilter } from '@/types/grant';
+import { GrantFilter } from '@/shared/types/grant';
 
 
 interface ActiveFiltersProps {

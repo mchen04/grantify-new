@@ -1,5 +1,5 @@
-import { GrantFilter } from '@/types/grant';
-import { MAX_FUNDING, MIN_DEADLINE_DAYS } from './constants';
+import { GrantFilter } from '@/shared/types/grant';
+import { MAX_FUNDING, MIN_DEADLINE_DAYS } from '@/shared/constants/app';
 import { mapDataSourcesToUUIDs } from './dataSourceMapping';
 
 /**
@@ -157,13 +157,6 @@ export function mapFiltersToApi(filter: GrantFilter): Record<string, unknown> {
     apiFilters.is_featured = true;
   }
   
-  // Posted date filters
-  if (filter.postDateFrom) {
-    apiFilters.posted_date_start = filter.postDateFrom;
-  }
-  if (filter.postDateTo) {
-    apiFilters.posted_date_end = filter.postDateTo;
-  }
   
   // Geographic filters
   if (filter.geographic_scope) {

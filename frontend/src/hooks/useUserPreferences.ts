@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usersApi } from '@/lib/apiClient';
+import supabaseApiClient from '@/lib/supabaseApiClient';
 import { UserPreferences } from '@/types/user';
 import { DEFAULT_USER_PREFERENCES } from '@/lib/config';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,13 +47,9 @@ export function useUserPreferences({
     try {
       setLoading(true);
       setError(null);
-      const response = await usersApi.getUserPreferences(userId, accessToken);
+      const response = await supabaseApiClient.users.getUserPreferences(userId);
 
-      if (response.error) {
-        
-        setError(`Failed to load preferences: ${response.error}.`);
-        setPreferences(null);
-      } else if (response.data) {
+      if (response.data) {
         setPreferences(response.data);
       } else {
         // No preferences found, set defaults
@@ -92,11 +88,8 @@ export function useUserPreferences({
         user_id: userId
       };
       
-      const response = await usersApi.updateUserPreferences(userId, updatedPreferences, accessToken);
+      const response = await supabaseApiClient.users.updateUserPreferences(userId, updatedPreferences);
 
-      if (response.error) {
-        throw new Error(response.error);
-      }
       await fetchPreferences(); // Refetch to get the updated preferences
     } catch (err: any) {
       

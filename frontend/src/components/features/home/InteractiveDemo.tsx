@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Grant } from '@/types/grant';
-import apiClient, { cacheUtils } from '@/lib/apiClient';
+import { Grant } from '@/shared/types/grant';
+import supabaseApiClient from '@/lib/supabaseApiClient';
 
 const SearchIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,73 +111,15 @@ export default function InteractiveDemo() {
     setHasSearched(true);
     
     try {
-      // Clear all caches
-      cacheUtils.clearCache();
-      if (typeof window !== 'undefined' && 'caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-        
+      // Search grants using Supabase API
+      const { data, error } = await supabaseApiClient.grants.searchGrants(demoQuery, { limit: 10 });
+      
+      if (error) {
+        throw new Error(error);
       }
       
-      
-      
-      // Use semantic search endpoint with very low threshold to ensure 5 results
-      const timestamp = Date.now();
-      const randomParam = Math.random();
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/grants/search-semantic?query=${encodeURIComponent(demoQuery)}&limit=10&match_threshold=0.01&_t=${timestamp}&_r=${randomParam}&_nocache=true`;
-      
-      
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-No-Cache': 'true'
-        },
-        cache: 'no-store',
-        mode: 'cors',
-        credentials: 'same-origin'
-      });
-      
-      const data = await response.json();
-      
-      
-      
-      if (!response.ok || data.error) {
-        throw new Error(data.error || 'Failed to fetch grants');
-      }
-      
-      let fetchedGrants = (data.grants || []) as Grant[];
-      
-      // If semantic search returned less than 5, try with even lower threshold
-      if (fetchedGrants.length < 5 && data.method === 'embeddings') {
-        
-        const retryUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/grants/search-semantic?query=${encodeURIComponent(demoQuery)}&limit=10&match_threshold=0.001&_t=${Date.now()}&_r=${Math.random()}`;
-        
-        const retryResponse = await fetch(retryUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          cache: 'no-store'
-        });
-        
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json();
-          if (retryData.grants && retryData.grants.length > fetchedGrants.length) {
-            fetchedGrants = (retryData.grants || []) as Grant[];
-            
-          }
-        }
-      }
-      
-      // Ensure we always show exactly 5 grants
-      const finalGrants = fetchedGrants.slice(0, 5);
+      // Get the first 5 grants for demo
+      const finalGrants = (data?.grants || []).slice(0, 5) as Grant[];
       
       // Simulate AI processing time for demo effect
       setTimeout(() => {

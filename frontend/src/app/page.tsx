@@ -37,7 +37,7 @@ interface Stats {
 const ParticleField = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(0);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -588,7 +588,7 @@ export default function Home() {
                     
                     <Button
                       href="/signup"
-                      variant="outline"
+                      variant="ghost"
                       className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-lg"
                     >
                       Create Account

@@ -1,6 +1,6 @@
 # Grantify.ai
 
-A grant discovery platform that helps researchers and organizations find relevant funding opportunities using advanced search and intelligent recommendations.
+A clean, modern grant discovery platform that helps researchers and organizations find relevant funding opportunities using advanced search and intelligent recommendations.
 
 ## Overview
 
@@ -10,61 +10,64 @@ Grantify.ai transforms how researchers discover and apply for grants by combinin
 
 - **Advanced Search**: Full-text search across grant titles and descriptions
 - **Smart Recommendations**: Algorithm that matches grants based on user preferences and interaction history
-- **Optimized Filtering**: Streamlined filter system with 6 effective filters, inclusive data handling, and clear coverage indicators
-- **Real-time Updates**: Direct API integration with 13+ official grant data sources
+- **Optimized Filtering**: Streamlined filter system with effective filters and inclusive data handling
+- **Real-time Updates**: Direct API integration with official grant data sources via Supabase Edge Functions
 - **Responsive Design**: Full mobile support with comprehensive accessibility features
-- **Enterprise Security**: Supabase Auth with Google OAuth, RBAC, CSRF protection, rate limiting, and audit logging
-- **Performance Optimized**: Batch API endpoints, database indexing, hybrid caching (Redis + in-memory)
-- **Analytics Dashboard**: Real-time metrics with materialized views for performance insights
-- **Error Monitoring**: Integrated Sentry for error tracking and performance monitoring
+- **Enterprise Security**: Supabase Auth with Google OAuth, RLS policies, and audit logging
+- **Performance Optimized**: Modern React patterns with optimized data fetching and caching
+- **Analytics Dashboard**: Real-time metrics with database views for performance insights
 
 ## Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 15.3.4 with App Router
+- **Framework**: Next.js 15.3+ with App Router
 - **Language**: TypeScript 5
-- **Styling**: Tailwind CSS 3.4
+- **Styling**: Tailwind CSS 3.4 with custom components
 - **UI Components**: Custom accessible components with ARIA support
 - **Auth**: Supabase Authentication with Google OAuth
-- **State**: React Context API with custom hooks
-- **Performance**: Optimized with Turbopack, image optimization, and caching
-- **Monitoring**: Sentry integration for error tracking and session replay
-- **Testing**: Jest + React Testing Library + Playwright for E2E
+- **State**: React Context API with TanStack Query
+- **Performance**: Optimized with modern React patterns and data fetching
 
-### Backend
-- **Runtime**: Node.js 18+ 
-- **Framework**: Express.js 4.18.2 with TypeScript
-- **Database**: PostgreSQL 15 with pgvector extension (Supabase)
-- **API Integration**: Direct integration with 13+ grant data sources
-- **Caching**: Hybrid caching with Redis (optional) and in-memory fallback
-- **Security**: Helmet, CORS, express-rate-limit, express-validator, audit logging
-- **Logging**: Winston with JSON formatting
-- **Monitoring**: Sentry for error tracking and performance monitoring
+### Backend/Database
+- **Database**: PostgreSQL 15 with Supabase
+- **Backend Logic**: Supabase Edge Functions (Deno runtime)
+- **Vector Search**: pgvector extension for semantic search
+- **Authentication**: Supabase Auth with Row Level Security
+- **Cron Jobs**: Supabase cron for automated data updates
+- **API Integration**: Direct integration with grant data sources via Edge Functions
 
 ## Project Structure
 
 ```
 Grantify.ai/
-├── frontend/              # Next.js frontend application
+├── frontend/                     # Next.js React application
 │   ├── src/
-│   │   ├── app/          # App router pages and layouts
-│   │   ├── components/   # Reusable UI components
-│   │   ├── contexts/     # React contexts (Auth, Search, Interactions)
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── lib/          # Utilities and API client
-│   │   └── types/        # TypeScript type definitions
-│   └── public/           # Static assets
-├── backend/              # Express.js API server
-│   ├── src/
-│   │   ├── config/       # Configuration management
-│   │   ├── db/           # Database client and migrations
-│   │   ├── middleware/   # Express middleware
-│   │   ├── models/       # Data models and types
-│   │   ├── routes/       # API route handlers
-│   │   ├── services/     # Business logic and integrations
-│   │   └── utils/        # Helper utilities
-│   └── dist/             # Compiled TypeScript output
-└── scripts/              # Deployment and maintenance scripts
+│   │   ├── app/                  # Next.js app router pages
+│   │   ├── components/           # React components with barrel exports
+│   │   │   ├── ui/               # Reusable UI components
+│   │   │   ├── features/         # Feature-specific components
+│   │   │   └── layout/           # Layout components
+│   │   ├── hooks/                # Custom React hooks
+│   │   ├── lib/                  # Frontend utilities & configs
+│   │   ├── providers/            # React context providers
+│   │   ├── types/                # Frontend-specific types
+│   │   └── utils/                # Frontend helper functions
+│   └── public/                   # Static assets
+├── supabase/                     # Supabase configuration
+│   ├── functions/                # Edge functions for server logic
+│   ├── migrations/               # Database migrations
+│   ├── scripts/                  # Database utilities and setup
+│   └── config/                   # Supabase client configurations
+├── shared/                       # Shared utilities across all parts
+│   ├── types/                    # Shared TypeScript definitions
+│   ├── constants/                # Shared constants
+│   └── utils/                    # Shared helper functions
+├── docs/                         # All project documentation
+│   ├── development/              # Development setup & workflows
+│   └── architecture/             # System design documents
+├── backend/                      # Legacy utilities (minimal)
+│   └── package.json              # Dependencies for utility scripts
+└── configs/                      # Project-wide configurations
 ```
 
 ## Quick Start
@@ -82,86 +85,46 @@ git clone https://github.com/yourusername/Grantify.ai.git
 cd Grantify.ai
 ```
 
-2. Install dependencies:
+2. Install frontend dependencies:
 ```bash
-# Install root dependencies
+cd frontend
 npm install
-
-# Install frontend dependencies
-cd frontend && npm install
-
-# Install backend dependencies
-cd ../backend && npm install
 ```
 
 3. Set up environment variables:
-
-**Backend (.env)**:
-```env
-# Server
-PORT=3001
-NODE_ENV=development
-
-# Supabase
-SUPABASE_URL=your-project-url
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Security
-JWT_SECRET=your-32-char-secret
-
-# CORS (comma-separated)
-CORS_ALLOWED_ORIGINS=http://localhost:3000
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
-# Redis (optional)
-REDIS_URL=redis://localhost:6379
-REDIS_ENABLED=false
-
-# Monitoring (optional)
-SENTRY_DSN=your-sentry-dsn
-```
 
 **Frontend (.env.local)**:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Monitoring (optional)
-NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
-SENTRY_AUTH_TOKEN=your-sentry-auth-token
 ```
 
 4. Configure Google OAuth:
-   - Follow the guide in [OAUTH_SETUP_GUIDE.md](./OAUTH_SETUP_GUIDE.md)
-   - Add redirect URI in Google Console: `https://your-project.supabase.co/auth/v1/callback`
-   - Add redirect URL in Supabase: `http://localhost:3000/auth/callback`
+   - Create OAuth 2.0 credentials in Google Cloud Console
+   - Add redirect URI: `https://your-project.supabase.co/auth/v1/callback`
+   - Configure in Supabase Auth settings
+   - Add redirect URL: `http://localhost:3000/auth/callback`
 
-5. Start development servers:
+5. Start development:
 ```bash
-# From root directory
-npm run dev
-
-# Or start individually
-cd frontend && npm run dev    # http://localhost:3000
-cd backend && npm run dev     # http://localhost:3001
+npm run dev    # http://localhost:3000
 ```
 
 ## Database Schema
 
-See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed schema documentation.
-
 ### Core Tables
-- **grants**: Grant opportunities with comprehensive metadata
-- **users**: User authentication and profiles (managed by Supabase Auth)
-- **user_preferences**: Search preferences and project descriptions
-- **user_interactions**: Tracks saved, applied, and ignored grants
-- **data_sources**: API data source configuration and management
+- **grants**: Grant opportunities with vector embeddings and comprehensive metadata
+- **users**: User authentication and profiles (synchronized with Supabase Auth)
+- **user_preferences**: Search preferences with semantic project descriptions
+- **user_interactions**: User grant interactions (saved, applied, ignored)
+- **grant_contacts**: Contact information for grant opportunities
+
+### Database Features
+- **Vector Search**: 768-dimensional embeddings for semantic search
+- **Row Level Security**: Comprehensive RLS policies on all tables
+- **Performance Optimization**: Specialized indexes including vector similarity
+- **Audit Trails**: Complete tracking of user interactions
 
 ## Key Features
 
@@ -170,98 +133,95 @@ See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed schema documentation
 - Deadline proximity (25% weight)
 - Agency preferences (20% weight)
 - Category matching (15% weight)
-- Interaction history (10% weight, negative for ignored)
+- Interaction history (10% weight)
 
 ### Performance Optimizations
-- Request deduplication in API client
-- Hybrid caching with Redis and in-memory fallback
+- Modern React patterns with TanStack Query
+- Optimized data fetching and caching
 - Database query optimization with proper indexing
-- Materialized views for analytics queries
-- Batch API endpoints to prevent N+1 queries
+- Edge function-based server logic
+- Component-level optimization
 
 ### Security Implementation
-- JWT-based authentication with Supabase
+- Supabase Authentication with JWT
 - Google OAuth integration
-- CSRF token validation
-- Rate limiting per endpoint
+- Row Level Security (RLS) policies
 - Input validation and sanitization
-- SQL injection prevention
-- XSS protection
-- Security headers (HSTS, CSP, X-Frame-Options)
-- Audit logging for security events
+- Security headers and HTTPS enforcement
 
-## API Documentation
+## API Architecture
 
-### Authentication
-All protected endpoints require Bearer token:
-```
-Authorization: Bearer <supabase-jwt-token>
-```
+### Supabase Edge Functions
+- **Grant Data Sync**: Automated data collection from official sources
+- **AI Recommendations**: Personalized grant matching algorithms
+- **Search Processing**: Advanced search and filtering logic
+- **Cron Jobs**: Scheduled data updates and maintenance
 
-### Core Endpoints
-
-#### Grants
-- `GET /api/grants` - Search and filter grants
-- `GET /api/grants/:id` - Get grant details
-- `GET /api/grants/recommended` - Get AI recommendations
-- `POST /api/grants/batch` - Batch fetch grants
-
-#### User Interactions
-- `POST /api/grants/:id/save` - Save a grant
-- `POST /api/grants/:id/apply` - Mark as applied
-- `POST /api/grants/:id/ignore` - Ignore a grant
-
-#### User Preferences
-- `GET /api/users/preferences` - Get preferences
-- `PUT /api/users/preferences` - Update preferences
+### Frontend API Integration
+- **Supabase Client**: Direct database access with RLS
+- **TanStack Query**: Optimized data fetching and caching
+- **Real-time Updates**: Supabase real-time subscriptions
 
 ## Deployment
 
-See the comprehensive [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for production deployment instructions.
-
-### Recommended: Vercel (Frontend) + Render (Backend)
+### Recommended: Vercel (Frontend) + Supabase (Backend)
 
 #### Frontend to Vercel
 1. Connect GitHub repo to Vercel
 2. Set root directory to `frontend`
-3. Add environment variables
-4. Deploy automatically
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SITE_URL`
+4. Deploy automatically on git push
 
-#### Backend to Render
-1. Create Web Service on Render
-2. Set root directory to `backend`
-3. Build: `npm install && npm run build`
-4. Start: `npm start`
-5. Add environment variables
+#### Supabase Setup
+1. Create Supabase project
+2. Deploy edge functions: `supabase functions deploy`
+3. Run migrations: `supabase db push`
+4. Configure authentication providers
+5. Set up cron jobs for data sync
 
-## Testing
+## Development
 
+### Frontend Development
 ```bash
-# Frontend tests
 cd frontend
-npm test               # Unit tests
-npm run test:e2e      # E2E tests with Playwright
-npm run test:coverage # Coverage report
-
-# Backend tests
-cd backend
-# Tests not yet implemented
+npm run dev          # Development server
+npm run build        # Production build
+npm run lint         # ESLint check
 ```
 
-## Monitoring
-
-- **Error Tracking**: Sentry integration for both frontend and backend
-- **Performance Monitoring**: Real-time metrics and profiling
-- **Health Checks**: `GET /api/health` endpoint
-- **Analytics Dashboard**: User engagement and grant metrics
+### Database Development
+```bash
+# Using Supabase CLI
+supabase start                    # Local development
+supabase db diff                  # Generate migrations
+supabase functions serve          # Local edge functions
+```
 
 ## Security Best Practices
 
 1. **Environment Variables**: Never commit .env files
-2. **API Keys**: Rotate regularly, use least privilege
+2. **API Keys**: Use anon key for client, service role for server
 3. **Database**: Enable RLS policies in Supabase
 4. **HTTPS**: Always use in production
 5. **Dependencies**: Regular updates with `npm audit`
+
+## Architecture Benefits
+
+### Simplified Stack
+- **No separate backend server** - Supabase handles all backend logic
+- **Edge functions** - Server logic runs close to users globally
+- **Built-in auth** - No custom authentication implementation needed
+- **Real-time** - Live updates without WebSocket management
+- **Scalable** - Supabase handles scaling automatically
+
+### Developer Experience
+- **TypeScript throughout** - Full type safety across the stack
+- **Modern React** - Latest patterns and best practices
+- **Clean structure** - Logical organization with shared utilities
+- **Fast development** - Hot reload and optimized build process
 
 ## Contributing
 
@@ -275,32 +235,29 @@ cd backend
 
 This project is licensed under the MIT License.
 
-## Acknowledgments
-
-- NIH for providing public grant data
-- Google Cloud for AI/ML services
-- Supabase for database infrastructure
-- The open-source community
-
 ---
 
-Built by the Grantify.ai team
-
-**Status**: Production Ready
-**Version**: 1.3.0
+**Status**: Clean Skeleton - Ready for Development
+**Version**: 2.0.0
+**Architecture**: Frontend → Supabase (Edge Functions + Database)
 **Last Updated**: January 2025
 
-## Recent Updates (v1.3.0)
+## Recent Updates (v2.0.0)
 
-### Filter System Optimization
-- **Removed ineffective filters**: Cost sharing (all grants identical), Featured (0 grants), Applicant types (no data)
-- **Fixed currency filter bug**: Unchecking currencies now works correctly
-- **Added inclusive data handling**: All filters include "Show All" options to prevent data exclusion
-- **Streamlined UI**: Cleaner interface with data coverage warnings
-- **Enhanced filter logic**: Proper handling of undefined vs explicit array selections
+### Architecture Modernization
+- **Migrated to Supabase-first architecture** - Removed Express.js backend
+- **Edge Functions** - Server logic now runs on Supabase Edge Functions
+- **Simplified stack** - Frontend → Supabase (no separate backend server)
+- **Clean skeleton** - Removed all testing infrastructure for focused development
 
-### Technical Improvements
-- Comprehensive filter testing with 96 test scenarios (100% pass rate)
-- Updated filter mapping logic for better API parameter handling
-- Improved active filter counting and state management
-- Removed confusing "Only unspecified" options for cleaner UX
+### Project Reorganization
+- **Shared utilities** - Common types and constants in `shared/` directory
+- **Consolidated documentation** - All docs in `docs/` directory
+- **Component organization** - Barrel exports for cleaner imports
+- **TypeScript paths** - Configured for modern import patterns
+
+### Developer Experience
+- **Faster setup** - Single `npm install` in frontend directory
+- **Cleaner builds** - No test compilation overhead
+- **Modern patterns** - Latest React and Next.js best practices
+- **Streamlined dependencies** - 80% fewer packages to manage

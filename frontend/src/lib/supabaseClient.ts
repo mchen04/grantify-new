@@ -8,12 +8,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables');
 }
 
-// Create client with standard configuration - let Supabase handle storage
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// IMPORTANT: Direct database queries have been removed
-// All data access should go through the backend API using apiClient from @/lib/apiClient
-// This file should only be used for authentication purposes
+// Create client with standard configuration for direct database access
+// Using anon key with RLS (Row Level Security) for secure direct access
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
 
 export default supabase;
 

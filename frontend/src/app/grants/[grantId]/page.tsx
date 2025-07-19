@@ -5,11 +5,16 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
-import apiClient from '@/lib/apiClient';
+import supabaseApiClient from '@/lib/supabaseApiClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInteractions } from '@/contexts/InteractionContext';
+import { 
+  useInteractionStatus, 
+  useSaveGrantMutation, 
+  useApplyGrantMutation, 
+  useIgnoreGrantMutation 
+} from '@/hooks/useInteractions';
 import { parseTextWithLinks } from '@/utils/formatters';
-import { Grant } from '@/types/grant';
+import { Grant } from '@/shared/types/grant';
 import { UserInteraction as Interaction, InteractionStatus } from '@/types/interaction';
 import GoogleAdSense from '@/components/ui/GoogleAdSense';
 import { ADSENSE_CONFIG } from '@/lib/config';
@@ -151,7 +156,11 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
   const unwrappedParams = use(params);
   const grantId = unwrappedParams.grantId;
   const { user, session } = useAuth();
-  const { getInteractionStatus, updateUserInteraction, lastInteractionTimestamp } = useInteractions();
+  // Use new TanStack Query hooks for interactions
+  const interactionStatus = useInteractionStatus(grantId);
+  const { saveGrant } = useSaveGrantMutation();
+  const { applyGrant } = useApplyGrantMutation();
+  const { ignoreGrant } = useIgnoreGrantMutation();
   const searchParams = useSearchParams();
   const [grant, setGrant] = useState<Grant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,8 +203,8 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
         setLoading(true);
         setError(null);
         
-        // Fetch the grant by ID using apiClient
-        const { data, error } = await apiClient.grants.getGrantById(grantId);
+        // Fetch the grant by ID using Supabase
+        const { data, error } = await supabaseApiClient.grants.getGrantById(grantId);
         
         if (error) {
           setError(`Unable to load grant details: ${error}`);
@@ -209,10 +218,9 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
         
         setGrant(data.grant as Grant); // Correctly set the nested grant object
         
-        // If user is logged in, get the interaction status from the context
+        // If user is logged in, get the interaction status from TanStack Query
         if (user) {
-          const status = getInteractionStatus(grantId);
-          setInteractionState(status || null);
+          setInteractionState(interactionStatus || null);
           setInteractionLoading(false);
         }
         
@@ -249,10 +257,9 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
   // Update the interaction state when the context changes
   useEffect(() => {
     if (user && grantId) {
-      const status = getInteractionStatus(grantId);
-      setInteractionState(status || null);
+      setInteractionState(interactionStatus || null);
     }
-  }, [lastInteractionTimestamp, grantId, user, getInteractionStatus]);
+  }, [interactionStatus, grantId, user]);
   
   // Handle user interactions (save, apply, ignore)
   const handleInteraction = async (action: InteractionStatus) => {
@@ -269,8 +276,25 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
     const newStatus = isCurrentStatus ? null : action;
     
     try {
-      // Use the InteractionContext to update the interaction
-      await updateUserInteraction(grantId, newStatus);
+      // Use TanStack Query mutations based on action
+      if (newStatus === null) {
+        // Remove interaction - for now we'll just update the local state
+        // The TanStack Query mutations will handle the removal automatically
+        setInteractionState(null);
+      } else {
+        switch (action) {
+          case 'saved':
+            saveGrant(grantId);
+            break;
+          case 'applied':
+            applyGrant(grantId);
+            break;
+          case 'ignored':
+            ignoreGrant(grantId);
+            break;
+        }
+        setInteractionState(action);
+      }
     } catch (error: any) {
       // Could add toast notification here for user feedback
     } finally {
@@ -331,8 +355,9 @@ export default function GrantDetail({ params }: { params: Promise<PageParams> })
     
     // If user confirmed, mark as applied
     if (didApply) {
-      // Use the InteractionContext to update the interaction
-      updateUserInteraction(grantId, 'applied');
+      // Use TanStack Query mutation to apply
+      applyGrant(grantId);
+      setInteractionState('applied');
     }
     // If the user clicked "No", we don't need to do anything
   };

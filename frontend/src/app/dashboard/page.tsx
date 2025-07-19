@@ -7,8 +7,15 @@ import Link from 'next/link';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAuthReady, getLoadingStateMessage } from '@/utils/authHelpers';
-import { useInteractions } from '@/contexts/InteractionContext';
-import { DASHBOARD_GRANTS_PER_PAGE } from '@/utils/constants';
+import { 
+  useSaveGrantMutation, 
+  useApplyGrantMutation, 
+  useIgnoreGrantMutation,
+  useDeleteInteractionMutation 
+} from '@/hooks/useInteractions';
+import { useFetchDashboardData } from '@/hooks/useFetchDashboardData';
+import { DASHBOARD_GRANTS_PER_PAGE } from '@/shared/constants/app';
+import { useCleanupOnUnmount, useSafeTimeout } from '@/hooks/useCleanupOnUnmount';
 
 // Import GrantCardRef type separately
 import type { GrantCardRef } from '@/components/features/grants/GrantCard';
@@ -47,20 +54,44 @@ const DynamicApplyConfirmationPopup = dynamic(
   }
 );
 
-import { useFetchDashboardData } from '@/hooks/useFetchDashboardData';
 import { useGrantInteractions } from '@/hooks/useGrantInteractions';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
-import { Grant, ScoredGrant } from '@/types/grant';
+import { Grant, ScoredGrant } from '@/shared/types/grant';
 
 const TARGET_RECOMMENDED_COUNT = 10; // Target number of recommended grants
 
 function DashboardContent() {
   const { user, session, isLoading } = useAuth();
-  const { updateUserInteraction, interactionsMap, isLoading: interactionsLoading, refetchInteractions } = useInteractions();
+  // Use new TanStack Query hooks for interactions
+  const { saveGrant } = useSaveGrantMutation();
+  const { applyGrant } = useApplyGrantMutation();
+  const { ignoreGrant } = useIgnoreGrantMutation();
+  const deleteInteraction = useDeleteInteractionMutation();
+  
+  // Use the updated dashboard data hook
+  const {
+    recommendedGrants,
+    savedGrants,
+    appliedGrants,
+    ignoredGrants,
+    userPreferences,
+    loading: dashboardLoading,
+    error: dashboardError,
+    refetch: refetchDashboard,
+    fetchReplacementRecommendations
+  } = useFetchDashboardData({
+    targetRecommendedCount: TARGET_RECOMMENDED_COUNT,
+    enabled: !!user,
+    userId: user?.id
+  });
   const router = useRouter();
   const searchParams = useSearchParams();
   // Remove unused dashboard context
   const selectedGrantIndex = -1;
+
+  // Cleanup management to prevent race conditions after unmount
+  const cleanup = useCleanupOnUnmount();
+  const { set: setSafeTimeout } = useSafeTimeout();
   
   // Track grants being removed to prevent flicker
   const [removingGrantIds, setRemovingGrantIds] = useState<Set<string>>(new Set());
@@ -76,23 +107,6 @@ function DashboardContent() {
   
   const [error, setError] = useState<string | null>(null);
   
-  // Remove the force refresh on mount - the InteractionContext handles this
-  // This prevents unnecessary reloads when navigating back to dashboard
-  
-  // Use the custom hooks for data fetching and interactions
-  const {
-    recommendedGrants,
-    savedGrants,
-    appliedGrants,
-    ignoredGrants,
-    loading,
-    error: dashboardError,
-    refetch
-  } = useFetchDashboardData({
-    userId: user?.id,
-    targetRecommendedCount: TARGET_RECOMMENDED_COUNT,
-    enabled: !!user
-  });
 
   // Auto-refresh functionality
   const {
@@ -105,16 +119,14 @@ function DashboardContent() {
   } = useAutoRefresh({
     userId: user?.id,
     onRefresh: async () => {
-      if (user && !loading && !interactionsLoading) {
+      if (user && !isLoading && !dashboardLoading) {
         // Manual refresh requested by user
         try {
           // Clear caches for manual refresh to get fresh data
-          const { cacheUtils } = await import('@/lib/apiClient');
-          cacheUtils.clearInteractionsCache();
-          cacheUtils.clearRecommendationsCache();
+          // Cache is handled automatically by Supabase/TanStack Query
           
           // Then refetch
-          await refetch();
+          await refetchDashboard();
         } catch (error) {
           console.error('[Dashboard] Manual refresh error:', error);
         }
@@ -138,107 +150,31 @@ function DashboardContent() {
   // This prevents annoying reloads when users switch tabs or come back from applying
   // The data will still be fresh due to our caching strategy
   
+  // TODO: Replace with TanStack Query interaction tracking
   // Track interaction changes to detect when grants should be hidden
   useEffect(() => {
-    console.log('[Dashboard] Interaction map updated:', {
-      mapSize: Object.keys(interactionsMap).length,
-      sample: Object.entries(interactionsMap).slice(0, 5).map(([id, action]) => ({ id, action }))
-    });
+    // Simplified for now - the useFetchDashboardData hook handles this
+    console.log('[Dashboard] Using new TanStack Query interaction system');
     
-    // Compare current interactions with last known state
-    const newRemovingIds = new Set<string>();
-    const lastInteractionMap = lastInteractionMapRef.current;
-    
-    // Check all grants from both old and new interaction maps
-    const allGrantIds = new Set([
-      ...Object.keys(lastInteractionMap),
-      ...Object.keys(interactionsMap)
-    ]);
-    
-    allGrantIds.forEach(grantId => {
-      const lastInteraction = lastInteractionMap[grantId];
-      const currentInteraction = interactionsMap[grantId];
-      
-      // Add to removing list if:
-      // 1. Grant had an interaction but now doesn't (being removed)
-      // 2. Grant's interaction type changed (moving between tabs)
-      if ((lastInteraction && !currentInteraction) ||
-          (lastInteraction && currentInteraction && lastInteraction !== currentInteraction)) {
-        newRemovingIds.add(grantId);
-      }
-    });
-    
-    // Update tracking ref
-    lastInteractionMapRef.current = {...interactionsMap};
-    
-    if (newRemovingIds.size > 0) {
-      // Only add grants that aren't already being removed
-      setRemovingGrantIds(prev => {
-        const updated = new Set(prev);
-        newRemovingIds.forEach(id => {
-          if (!updated.has(id)) {
-            updated.add(id);
-            
-            // Set individual timeout for each grant
-            setTimeout(() => {
-              setRemovingGrantIds(current => {
-                const newSet = new Set(current);
-                newSet.delete(id);
-                return newSet;
-              });
-            }, 800); // Increased delay for smoother transitions
-          }
-        });
-        return updated;
-      });
-    }
-  }, [interactionsMap]);
+    // The new system automatically handles interaction updates
+    // No need for manual tracking of interaction maps
+    // The new TanStack Query system handles updates automatically
+  }, []);
   
   // Calculate interaction counts with flicker prevention
   const [interactionCounts, setInteractionCounts] = useState({ saved: 0, applied: 0, ignored: 0 });
-  const countUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentCountsRef = useRef({ saved: 0, applied: 0, ignored: 0 });
   
+  // Calculate interaction counts from the new TanStack Query data
   useEffect(() => {
-    // Clear any pending timeout
-    if (countUpdateTimeoutRef.current) {
-      clearTimeout(countUpdateTimeoutRef.current);
-    }
-    
-    // Calculate new counts
-    const newCounts = { saved: 0, applied: 0, ignored: 0 };
-    Object.entries(interactionsMap).forEach(([, action]) => {
-      if (action === 'saved') newCounts.saved++;
-      else if (action === 'applied') newCounts.applied++;
-      else if (action === 'ignored') newCounts.ignored++;
-    });
-    
-    // For decreases, update immediately. For increases, debounce.
-    const currentCounts = currentCountsRef.current;
-    const isDecrease = newCounts.saved < currentCounts.saved || 
-                      newCounts.applied < currentCounts.applied || 
-                      newCounts.ignored < currentCounts.ignored;
-    
-    if (isDecrease) {
-      // Update immediately when count decreases
-      setInteractionCounts(newCounts);
-      currentCountsRef.current = newCounts;
-    } else if (newCounts.saved !== currentCounts.saved || 
-               newCounts.applied !== currentCounts.applied || 
-               newCounts.ignored !== currentCounts.ignored) {
-      // Debounce increases to prevent flicker
-      countUpdateTimeoutRef.current = setTimeout(() => {
-        setInteractionCounts(newCounts);
-        currentCountsRef.current = newCounts;
-      }, 150);
-    }
-    
-    return () => {
-      if (countUpdateTimeoutRef.current) {
-        clearTimeout(countUpdateTimeoutRef.current);
-      }
+    const newCounts = { 
+      saved: savedGrants.length, 
+      applied: appliedGrants.length, 
+      ignored: ignoredGrants.length 
     };
-  }, [interactionsMap]);
+    setInteractionCounts(newCounts);
+    currentCountsRef.current = newCounts;
+  }, [savedGrants.length, appliedGrants.length, ignoredGrants.length]);
   
   const {
     handleShareGrant
@@ -490,26 +426,24 @@ function DashboardContent() {
         return; // Grant not found locally
       }
 
-      // Check if this is a toggle (removing an interaction)
-      const currentInteraction = interactionsMap[grantId];
-      const isRemoving = currentInteraction === action;
-      
-      console.log('[Dashboard] Grant interaction:', {
-        grantId,
-        action,
-        currentInteraction,
-        isRemoving,
-        willAddToRemoving: isRemoving || (currentInteraction && currentInteraction !== action)
-      });
+      // Simplified interaction handling with TanStack Query
+      console.log('[Dashboard] Grant interaction:', { grantId, action });
       
       // Immediately add to removingGrantIds to prevent flicker
-      if (isRemoving || (currentInteraction && currentInteraction !== action)) {
-        setRemovingGrantIds(prev => new Set([...prev, grantId]));
-      }
+      setRemovingGrantIds(prev => new Set([...prev, grantId]));
 
-      // Use the InteractionContext to update the interaction
-      // This will handle toggling (if the same action is clicked twice)
-      await updateUserInteraction(grantId, action);
+      // Use TanStack Query mutations to update the interaction
+      switch (action) {
+        case 'saved':
+          saveGrant(grantId);
+          break;
+        case 'applied':
+          applyGrant(grantId);
+          break;
+        case 'ignored':
+          ignoreGrant(grantId);
+          break;
+      }
       
       // No need to manually refresh as the InteractionContext will trigger updates
     } catch (error: any) {
@@ -527,7 +461,7 @@ function DashboardContent() {
 
   // Show loading state while checking authentication or loading data
   // Match the search page's simpler approach - don't wait for interactions
-  if (!isAuthReady(isLoading, user, session) || loading) {
+  if (!isAuthReady(isLoading, user, session) || dashboardLoading) {
     const loadingMessage = getLoadingStateMessage(isLoading, user, session) || 'Loading dashboard...';
     return (
       <Layout>

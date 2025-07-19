@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { debounce } from '@/utils/debounce';
-import { MIN_DEADLINE_DAYS, MAX_DEADLINE_DAYS } from '@/utils/constants';
+import { MIN_DEADLINE_DAYS, MAX_DEADLINE_DAYS } from '@/shared/constants/app';
 
 interface DeadlineFilterProps {
   deadlineMinDays?: number;

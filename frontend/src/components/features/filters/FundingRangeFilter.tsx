@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { debounce } from '@/utils/debounce';
-import { MAX_FUNDING } from '@/utils/constants';
+import { MAX_FUNDING } from '@/shared/constants/app';
 
 interface FundingRangeFilterProps {
   fundingMin?: number;
