@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { edgeFunctions } from '@/lib/edgeFunctions';
 
 // Stats interface
 interface Stats {
@@ -228,11 +229,10 @@ export default function Home() {
   ];
   
   useEffect(() => {
-    // Fetch stats
+    // Fetch stats from edge function
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/stats');
-        const data = await response.json();
+        const data = await edgeFunctions.getStats();
         setStats(data);
       } catch (error) {
         console.error('Stats fetch error:', error);
