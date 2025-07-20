@@ -3,6 +3,7 @@
   "version": "1.3.0",
   "description": "Backend utilities for Grantify.ai - Database functions and scripts for Supabase integration",
   "scripts": {
+    "dev": "echo 'Backend functionality moved to Supabase Edge Functions. See /supabase/functions/'",
     "build": "tsc",
     "lint": "eslint . --ext .js,.ts"
   },
